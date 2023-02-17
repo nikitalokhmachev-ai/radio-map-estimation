@@ -44,7 +44,7 @@ class Autoencoder(torch.nn.Module):
                 print(f'{loss}, [{epoch + 1}, {i + 1:5d}] loss: {running_loss/(i+1)}')
 
 
-    def evaluate(self, test_dl):
+    def evaluate(self, test_dl, scaler):
         losses = []
         with torch.no_grad():
             for i, data in enumerate(test_dl):
@@ -53,9 +53,13 @@ class Autoencoder(torch.nn.Module):
                     t_channel_pow = t_channel_pow.flatten(1).to(device)
                     t_y_point_pred = self.forward(t_x_point)
                     building_mask = (t_x_point[:,1,:,:].flatten(1) == -1).to(torch.float64)
-                    loss = (torch.norm((1 - building_mask) * (t_channel_pow * 230 - t_y_point_pred * 230), dim=1) ** 2 / torch.sum(building_mask == 0, axis=1)).detach().cpu().tolist()
+                    loss = (torch.norm((1 - building_mask) * (scaler.reverse_transform(t_channel_pow) - scaler.reverse_transform(t_y_point_pred)), dim=1) ** 2 / torch.sum(building_mask == 0, axis=1)).detach().cpu().tolist()
                     losses += loss
             
                     print(f'{np.sqrt(np.mean(loss))}')
                     
             return torch.sqrt(torch.Tensor(losses).mean())
+        
+
+    def save_model(self, out_path):
+        torch.save(self, out_path)

@@ -34,7 +34,6 @@ def load_numpy_array(file_path, scaler):
     return t_x_points, t_y_points, t_y_masks, t_channel_pows
   
 
-
 class Scaler():
     def __init__(self, scaler='minmax', bounds=(0, 1)):
         self.scaler = scaler
@@ -45,14 +44,17 @@ class Scaler():
             self.sc = StandardScaler()
     
     def fit(self, data):
-        #val1: min (mean)
-        #val2: max (var)
-        data = data.flatten()
+        data = data.flatten().reshape(-1,1)
         self.sc.partial_fit(data)
 
     def transform(self, data):
-        if self.scaler == 'minmax':
-            return (data - self.sc.data_min_) / (self.sc.data_max_ - self.sc.data_min_)
-
-        if self.scaler == 'standard':
-            return (data - self.sc.mean_) / np.sqrt(self.sc.var_)
+            if self.scaler == 'minmax':
+                return (data - self.sc.data_min_) / (self.sc.data_max_ - self.sc.data_min_)
+            if self.scaler == 'standard':
+                return (data - self.sc.mean_) / np.sqrt(self.sc.var_)
+    
+    def reverse_transform(self, data):
+            if self.scaler == 'minmax':
+                return data * (self.sc.data_max_ - self.sc.data_min_) + self.sc.data_min_
+            if self.scaler == 'standard':
+                return data * np.sqrt(self.sc.var_) + self.sc.mean_
