@@ -27,10 +27,12 @@ def file_path_generator(pickles, scaler):
 
 def load_numpy_array(file_path, scaler):
     t_x_points, t_channel_pows, t_y_masks = np.load(file_path, allow_pickle=True)
-    if scaler:
-      t_x_points[:, 0, :, :] = scaler(t_x_points[:, 0, :, :])
-      t_channel_pows = scaler(t_channel_pows)
     t_y_points = t_channel_pows * t_y_masks
+    if scaler:
+        t_x_mask = t_x_points[:,1,:,:] == 1
+        t_x_points[:,0,:,:] = scaler.transform(t_x_points[:,0,:,:]) * t_x_mask
+        t_channel_pows = scaler.transform(t_channel_pows)
+        t_y_points = scaler.transform(t_y_points)
     return t_x_points, t_y_points, t_y_masks, t_channel_pows
   
 
@@ -48,13 +50,20 @@ class Scaler():
         self.sc.partial_fit(data)
 
     def transform(self, data):
-            if self.scaler == 'minmax':
-                return (data - self.sc.data_min_) / (self.sc.data_max_ - self.sc.data_min_)
-            if self.scaler == 'standard':
-                return (data - self.sc.mean_) / np.sqrt(self.sc.var_)
+        data_shape = data.shape
+        data = data.flatten().reshape(-1,1)
+        data = self.sc.transform(data)
+        data = data.reshape(data_shape)        
+        return data
     
     def reverse_transform(self, data):
-            if self.scaler == 'minmax':
-                return data * (self.sc.data_max_ - self.sc.data_min_) + self.sc.data_min_
-            if self.scaler == 'standard':
-                return data * np.sqrt(self.sc.var_) + self.sc.mean_
+        data_shape = data.shape
+        data = data.flatten().reshape(-1,1)
+        data = self.sc.inverse_transform(data)
+        data = data.reshape(data_shape)        
+        return data
+
+def train_scaler(scaler, pickles):
+    gen = file_path_generator(pickles, scaler=None)
+    for t_x_point, t_y_point, t_y_mask, t_channel_pow, file_path, i in gen:
+        scaler.fit(t_channel_pow)
