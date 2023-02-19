@@ -32,7 +32,7 @@ class Autoencoder(torch.nn.Module):
                 t_y_point_pred = self.forward(t_x_point).to(torch.float64)
                 loss_ = torch.nn.functional.mse_loss(t_y_point * t_y_mask, t_y_point_pred * t_y_mask).to(torch.float32)
                 if loss == 'rmse':
-                    loss_ = torch.sqrt(loss)
+                    loss_ = torch.sqrt(loss_)
                 if means is not None and logvars is not None:
                     kl_loss = -0.5 * torch.sum(1 + logvars - means.pow(2) - logvars.exp(), dim=1) #Figure out the shapes
                     kl_loss = torch.mean(kl_loss)
