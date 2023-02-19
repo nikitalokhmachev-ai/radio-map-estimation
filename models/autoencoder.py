@@ -21,7 +21,7 @@ class Autoencoder(torch.nn.Module):
         x = self.decoder(x)
         return x
         
-     def fit(self, train_dl, optimizer, epochs=100, loss='mse', means=None, logvars=None):
+    def fit(self, train_dl, optimizer, epochs=100, loss='mse', means=None, logvars=None):
         for epoch in range(epochs):
             running_loss = 0.0
             for i, data in enumerate(train_dl):
