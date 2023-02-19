@@ -21,7 +21,7 @@ class Autoencoder(torch.nn.Module):
         x = self.decoder(x)
         return x
         
-    def fit(self, train_dl, optimizer, epochs=100, loss='mse', means=None, logvars=None):
+     def fit(self, train_dl, optimizer, epochs=100, loss='mse', means=None, logvars=None):
         for epoch in range(epochs):
             running_loss = 0.0
             for i, data in enumerate(train_dl):
@@ -30,18 +30,22 @@ class Autoencoder(torch.nn.Module):
                 t_x_point, t_y_point, t_y_mask = t_x_point.to(torch.float32).to(device), t_y_point.flatten(1).to(device), t_y_mask.flatten(1).to(device)
                 t_channel_pow = t_channel_pow.flatten(1).to(device)
                 t_y_point_pred = self.forward(t_x_point).to(torch.float64)
+<<<<<<< HEAD
+                loss_ = torch.nn.functional.mse_loss(t_y_point, t_y_point_pred * t_y_mask).to(torch.float32)
+=======
                 loss = torch.nn.functional.mse_loss(t_y_point * t_y_mask, t_y_point_pred * t_y_mask).to(torch.float32)
+>>>>>>> a8e4e04a99c43de54e446d13b05e4a6620b1f4f8
                 if loss == 'rmse':
-                    loss = torch.sqrt(loss)
+                    loss_ = torch.sqrt(loss)
                 if means is not None and logvars is not None:
                     kl_loss = -0.5 * torch.sum(1 + logvars - means.pow(2) - logvars.exp(), dim=1) #Figure out the shapes
                     kl_loss = torch.mean(kl_loss)
-                    loss += kl_loss
-                loss.backward()
+                    loss_ += kl_loss
+                loss_.backward()
                 optimizer.step()
 
-                running_loss += loss.item()        
-                print(f'{loss}, [{epoch + 1}, {i + 1:5d}] loss: {running_loss/(i+1)}')
+                running_loss += loss_.item()        
+                print(f'{loss_}, [{epoch + 1}, {i + 1:5d}] loss: {running_loss/(i+1)}')
 
 
     def evaluate(self, test_dl, scaler):
