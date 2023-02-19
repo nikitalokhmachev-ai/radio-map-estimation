@@ -66,7 +66,6 @@ class Encoder(nn.Module):
         return x, x_mu, x_logvar
     
 
-#@title Decoder
 class Decoder(nn.Module):
     def db_to_natural(self, x):
         return 10 ** (x / 10)
