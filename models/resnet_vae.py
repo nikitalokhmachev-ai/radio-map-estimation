@@ -6,6 +6,8 @@ from torch import nn
 import numpy as np
 from torch.utils.data import Dataset
 from PIL import Image
+from sklearn.manifold import TSNE
+import matplotlib.pyplot as plt
 
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
@@ -25,6 +27,7 @@ class Encoder(nn.Module):
         self.conv2d_8 = nn.Conv2d(n_dim, n_dim, kernel_size=(3, 3), padding='same')
         self.average_pooling2d_2 = nn.AvgPool2d(kernel_size=(2, 2))
         self.mu = nn.Conv2d(n_dim, enc_out, kernel_size=(3, 3), padding='same')
+        self.logvar = nn.Conv2d(n_dim, enc_out, kernel_size=(3, 3), padding='same')
 
         self.leaky_relu = torch.nn.LeakyReLU(negative_slope=leaky_relu_alpha)
 
@@ -34,6 +37,11 @@ class Encoder(nn.Module):
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
                 torch.nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+
+    def reparameterize(self, mu, logvar):
+        std = torch.exp(0.5*logvar)
+        eps = torch.randn_like(std)
+        return mu + eps*std
 
     def forward(self, x):
         x = self.leaky_relu(self.conv2d(x))
@@ -51,17 +59,21 @@ class Encoder(nn.Module):
         x = self.leaky_relu(self.conv2d_7(x))
         x = self.leaky_relu(self.conv2d_8(x) + skip)
         x = self.average_pooling2d_2(x)
-        x = self.leaky_relu(self.mu(x))
-        return x
+        x_mu = self.mu(x)
+        x_logvar = self.logvar(x)
+        x = self.reparameterize(x_mu, x_logvar)
+        x = self.leaky_relu(x)
+        return x, x_mu, x_logvar
     
 
+#@title Decoder
 class Decoder(nn.Module):
     def db_to_natural(self, x):
         return 10 ** (x / 10)
       
     def __init__(self, dec_in, dec_out, n_dim, leaky_relu_alpha=0.3):
         super(Decoder, self).__init__()
-        
+
         self.conv2d_transpose = nn.ConvTranspose2d(dec_in, dec_in, kernel_size=(3,3), stride=1, padding=1)
         self.conv2d_transpose_1 = nn.ConvTranspose2d(dec_in, n_dim, kernel_size=(3,3), stride=1, padding=1)
         self.conv2d_transpose_2 = nn.ConvTranspose2d(n_dim, n_dim, kernel_size=(3,3), stride=1, padding=1)
@@ -87,6 +99,7 @@ class Decoder(nn.Module):
         for m in self.modules():
             if isinstance(m, nn.ConvTranspose2d):
                 torch.nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+                
 
     def forward(self, x):
         x = self.leaky_relu(self.conv2d_transpose(x))

@@ -1,6 +1,6 @@
 from .resnet import Encoder as ResnetEncoder, Decoder as ResnetDecoder
-from .unet import Encoder as UnetEncoder, Decoder as UnetDecoder
 from .vae import Encoder as VariationalEncoder, Decoder as VariationalDecoder
+from .resnet_vae import Encoder as ResnetVariationalEncoder, Decoder as ResnetVariationalDecoder
 from .autoencoder import Autoencoder
 
 import torch
@@ -65,3 +65,15 @@ class VariationalAutoencoder(Autoencoder):
                     print(f'{np.sqrt(np.mean(loss))}')
                     
             return torch.sqrt(torch.Tensor(losses).mean())
+        
+
+
+
+class ResnetVariationalAutoencoder(VariationalAutoencoder):
+    def __init__(self, enc_in=2, enc_out=4, dec_out=1, n_dim=27, leaky_relu_alpha=0.3):
+        super().__init__()
+
+        self.encoder = ResnetVariationalEncoder(enc_in, enc_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
+        self.decoder = ResnetVariationalDecoder(enc_out, dec_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
+        
+
