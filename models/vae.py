@@ -63,7 +63,7 @@ class Encoder(nn.Module):
         x_logvar = self.logvar(x)
         x = self.reparameterize(x_mu, x_logvar)
         x = self.leaky_relu(x)
-        return x
+        return x, x_mu, x_logvar
     
 
 #@title Decoder
