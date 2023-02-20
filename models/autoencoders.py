@@ -1,4 +1,5 @@
 from .resnet import Encoder as ResnetEncoder, Decoder as ResnetDecoder
+from .unet import Encoder as UNetEncoder, Decoder as UNetDecoder
 from .vae import Encoder as VariationalEncoder, Decoder as VariationalDecoder
 from .resnet_vae import Encoder as ResnetVariationalEncoder, Decoder as ResnetVariationalDecoder
 from .autoencoder import Autoencoder
@@ -7,12 +8,30 @@ import torch
 import numpy as np
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
+
+
 class ResnetAutoencoder(Autoencoder):
     def __init__(self, enc_in=2, enc_out=4, dec_out=1, n_dim=27, leaky_relu_alpha=0.3):
         super().__init__()
 
         self.encoder = ResnetEncoder(enc_in, enc_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
         self.decoder = ResnetDecoder(enc_out, dec_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
+
+
+
+class UnetAutoencoder(Autoencoder):
+    def __init__(self, enc_in=2, enc_out=4, dec_out=1, n_dim=27, leaky_relu_alpha=0.3):
+        super().__init__()
+
+        self.encoder = UNetEncoder(enc_in, enc_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
+        self.decoder = UNetDecoder(enc_out, dec_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
+
+    def forward(self, x):
+        x, skip1, skip2, skip3 = self.encoder(x)
+        x = self.decoder(x, skip1, skip2, skip3)
+        return x
+
+
 
 class VariationalAutoencoder(Autoencoder):
     def __init__(self, enc_in=2, enc_out=4, dec_out=1, n_dim=27, leaky_relu_alpha=0.3):
@@ -66,7 +85,6 @@ class VariationalAutoencoder(Autoencoder):
                     
             return torch.sqrt(torch.Tensor(losses).mean())
         
-
 
 
 class ResnetVariationalAutoencoder(VariationalAutoencoder):
