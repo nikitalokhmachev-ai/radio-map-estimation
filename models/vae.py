@@ -11,6 +11,10 @@ import matplotlib.pyplot as plt
 
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
+seed = 3
+torch.manual_seed(seed)
+np.random.seed(seed)
+
 class Encoder(nn.Module):
     def __init__(self, enc_in, enc_out, n_dim, leaky_relu_alpha=0.3):
         super(Encoder, self).__init__()
