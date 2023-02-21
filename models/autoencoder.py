@@ -9,10 +9,6 @@ from PIL import Image
 
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
-seed = 3
-torch.manual_seed(seed)
-np.random.seed(seed)
-
 class Autoencoder(torch.nn.Module):
     def __init__(self):
         super().__init__()

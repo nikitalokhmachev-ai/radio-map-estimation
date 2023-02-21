@@ -9,10 +9,6 @@ from PIL import Image
 
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
-seed = 3
-torch.manual_seed(seed)
-np.random.seed(seed)
-
 class Encoder(nn.Module):
     def __init__(self, enc_in, enc_out, n_dim, leaky_relu_alpha=0.3):
         super(Encoder, self).__init__()
@@ -63,7 +59,7 @@ class Encoder(nn.Module):
 class Decoder(nn.Module):
     def db_to_natural(self, x):
         return 10 ** (x / 10)
-      
+
     def __init__(self, dec_in, dec_out, n_dim, leaky_relu_alpha=0.3):
         super(Decoder, self).__init__()
         

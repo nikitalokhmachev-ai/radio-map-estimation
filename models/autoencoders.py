@@ -8,10 +8,6 @@ import torch
 import numpy as np
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
-seed = 3
-torch.manual_seed(seed)
-np.random.seed(seed)
-
 
 class ResnetAutoencoder(Autoencoder):
     def __init__(self, enc_in=2, enc_out=4, dec_out=1, n_dim=27, leaky_relu_alpha=0.3):

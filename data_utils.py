@@ -8,7 +8,6 @@ from torch.utils.data import Dataset
 from PIL import Image
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
 
-
 class MapDataset(torch.utils.data.IterableDataset):
     def __init__(self, pickles, scaler=None):
         super().__init__()
@@ -60,7 +59,7 @@ class Scaler():
         data_shape = data.shape
         data = data.flatten().reshape(-1,1)
         data = self.sc.inverse_transform(data)
-        data = data.reshape(data_shape)        
+        data = data.reshape(data_shape)
         return data
 
 def train_scaler(scaler, pickles):
