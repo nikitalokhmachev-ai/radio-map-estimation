@@ -1,3 +1,4 @@
+from .base import Encoder as BaseEncoder, Decoder as BaseDecoder
 from .resnet import Encoder as ResnetEncoder, Decoder as ResnetDecoder
 from .unet import Encoder as UNetEncoder, Decoder as UNetDecoder
 from .res_unet import Encoder as ResUNetEncoder, Decoder as ResUNetDecoder
@@ -8,6 +9,16 @@ from .autoencoder import Autoencoder
 import torch
 import numpy as np
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+
+
+
+class BaseAutoencoder(Autoencoder):
+    def __init__(self, enc_in=2, enc_out=4, dec_out=1, n_dim=27, leaky_relu_alpha=0.3):
+        super().__init__()
+
+        self.encoder = BaseEncoder(enc_in, enc_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
+        self.decoder = BaseDecoder(enc_out, dec_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
+
 
 
 class ResnetAutoencoder(Autoencoder):
