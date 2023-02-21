@@ -36,9 +36,11 @@ def load_numpy_array(file_path, scaler):
   
 
 class Scaler():
-    def __init__(self, scaler='minmax', bounds=(0, 1)):
+    def __init__(self, scaler='minmax', bounds=(0, 1), min_trunc=None, max_trunc=None):
         self.scaler = scaler
         self.bounds = bounds
+        self.min_trunc = min_trunc
+        self.max_trunc = max_trunc
         if scaler == 'minmax':
             self.sc = MinMaxScaler(feature_range=self.bounds)
         else:
@@ -47,10 +49,20 @@ class Scaler():
     def fit(self, data):
         data = data.flatten().reshape(-1,1)
         self.sc.partial_fit(data)
+        if self.min_trunc:
+            if self.sc.data_min_ < self.min_trunc:
+                self.sc.data_min_ = self.min_trunc
+        if self.max_trunc:
+            if self.sc.data_max_ > self.max_trunc:
+                self.sc.data_max_ = self.max_trunc
 
     def transform(self, data):
         data_shape = data.shape
         data = data.flatten().reshape(-1,1)
+        if self.min_trunc:
+            data[data < self.min_trunc] = self.min_trunc
+        if self.max_trunc:
+            data[data > self.max_trunc] = self.max_trunc
         data = self.sc.transform(data)
         data = data.reshape(data_shape)        
         return data
