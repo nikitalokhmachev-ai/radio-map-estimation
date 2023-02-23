@@ -65,7 +65,7 @@ class VariationalAutoencoder(Autoencoder):
         x = self.decoder(x)
         return x, x_mu, x_logvar
         
-    def fit(self, train_dl, optimizer, epochs=100, loss='mse'):
+    '''def fit(self, train_dl, optimizer, epochs=100, loss='mse'):
         for epoch in range(epochs):
             running_loss = 0.0
             for i, data in enumerate(train_dl):
@@ -103,7 +103,7 @@ class VariationalAutoencoder(Autoencoder):
             
                     print(f'{np.sqrt(np.mean(loss))}')
                     
-            return torch.sqrt(torch.Tensor(losses).mean())
+            return torch.sqrt(torch.Tensor(losses).mean())'''
         
 
 
