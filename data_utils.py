@@ -27,15 +27,17 @@ def file_path_generator(pickles, scaler, building_value=None):
 
 def load_numpy_array(file_path, scaler, building_value=None):
     t_x_points, t_channel_pows, t_y_masks = np.load(file_path, allow_pickle=True)
-    if building_value:
-        t_x_points[:,0][t_x_points[:,1] == -1] = building_value
-
     t_y_points = t_channel_pows * t_y_masks
+
     if scaler:
         t_x_mask = t_x_points[:,1,:,:] == 1
         t_x_points[:,0,:,:] = scaler.transform(t_x_points[:,0,:,:]) * t_x_mask
         t_channel_pows = scaler.transform(t_channel_pows)
         t_y_points = scaler.transform(t_y_points)
+
+    if building_value:
+        t_x_points[:,0][t_x_points[:,1] == -1] = building_value
+    
     return t_x_points, t_y_points, t_y_masks, t_channel_pows
   
 
