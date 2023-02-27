@@ -65,18 +65,18 @@ class Encoder(nn.Module):
 class Decoder(nn.Module):
     def db_to_natural(self, x):
         return 10 ** (x / 10)
-      
+
     def __init__(self, dec_in, dec_out, n_dim, leaky_relu_alpha=0.3):
         super(Decoder, self).__init__()
         
         self.conv2d_transpose = nn.ConvTranspose2d(dec_in, dec_in, kernel_size=(3,3), stride=1, padding=1)
-        self.conv2d_transpose_1 = nn.ConvTranspose2d(dec_in, n_dim, kernel_size=(3,3), stride=1, padding=1)
+        self.conv2d_transpose_1 = nn.ConvTranspose2d(dec_in + n_dim, n_dim, kernel_size=(3,3), stride=1, padding=1)
         self.conv2d_transpose_2 = nn.ConvTranspose2d(n_dim, n_dim, kernel_size=(3,3), stride=1, padding=1)
         self.conv2d_transpose_3 = nn.ConvTranspose2d(n_dim, n_dim, kernel_size=(3,3), stride=1, padding=1)
-        self.conv2d_transpose_4 = nn.ConvTranspose2d(n_dim, n_dim, kernel_size=(3,3), stride=1, padding=1)
+        self.conv2d_transpose_4 = nn.ConvTranspose2d(2 * n_dim, n_dim, kernel_size=(3,3), stride=1, padding=1)
         self.conv2d_transpose_5 = nn.ConvTranspose2d(n_dim, n_dim, kernel_size=(3,3), stride=1, padding=1)
         self.conv2d_transpose_6 = nn.ConvTranspose2d(n_dim, n_dim, kernel_size=(3,3), stride=1, padding=1)
-        self.conv2d_transpose_7 = nn.ConvTranspose2d(n_dim, n_dim, kernel_size=(3,3), stride=1, padding=1)
+        self.conv2d_transpose_7 = nn.ConvTranspose2d(2 * n_dim, n_dim, kernel_size=(3,3), stride=1, padding=1)
         self.conv2d_transpose_8 = nn.ConvTranspose2d(n_dim, n_dim, kernel_size=(3,3), stride=1, padding=1)
         self.conv2d_transpose_9 = nn.ConvTranspose2d(n_dim, dec_out, kernel_size=(3,3), stride=1, padding=1)
 
