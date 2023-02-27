@@ -6,7 +6,7 @@ from torch import nn
 import numpy as np
 from torch.utils.data import Dataset
 from PIL import Image
-from sparse import SparseConv2d
+from .sparse import SparseConv2d
 
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
