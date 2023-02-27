@@ -18,7 +18,7 @@ class SparseConv2d(torch.nn.Module):
       self.stride = stride
       self.feature_conv = torch.nn.Conv2d(self.in_channels, self.out_channels, self.kernel_size, bias=False, padding=padding)
       self.norm_conv = torch.nn.Conv2d(1, self.out_channels, self.kernel_size, bias=False, padding=padding)
-      self.norm_conv.requires_grad = False
+      self.norm_conv.requires_grad_(False)  
       if self.stride != 1:
         raise Exception(f'Sparse Convolution only supports the stride of 1. Stride = {self.stride}')
 
