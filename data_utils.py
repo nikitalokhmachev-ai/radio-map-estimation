@@ -28,7 +28,7 @@ def file_path_generator(pickles, scaler, building_value=None):
 def load_numpy_array(file_path, scaler, building_value=None):
     t_x_points, t_channel_pows, t_y_masks = np.load(file_path, allow_pickle=True)
     if building_value:
-        pass
+        t_x_points[:,0][t_x_points[:,1] == -1] = building_value
 
     t_y_points = t_channel_pows * t_y_masks
     if scaler:
