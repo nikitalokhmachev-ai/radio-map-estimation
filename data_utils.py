@@ -9,23 +9,27 @@ from PIL import Image
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
 
 class MapDataset(torch.utils.data.IterableDataset):
-    def __init__(self, pickles, scaler=None):
+    def __init__(self, pickles, scaler=None, building_value=None):
         super().__init__()
         self.pickles = pickles
         self.scaler = scaler
+        self.building_value = building_value
 
     def __iter__(self):
-        yield from file_path_generator(self.pickles, self.scaler)
+        yield from file_path_generator(self.pickles, self.scaler, self.building_value)
 
-def file_path_generator(pickles, scaler):
+def file_path_generator(pickles, scaler, building_value=None):
     for file_path in pickles:
-        t_x_points, t_y_points, t_y_masks, t_channel_pows = load_numpy_array(file_path, scaler)
+        t_x_points, t_y_points, t_y_masks, t_channel_pows = load_numpy_array(file_path, scaler, building_value=building_value)
         for i, (t_x_point, t_y_point, t_y_mask, t_channel_pow) in enumerate(zip(t_x_points, t_y_points, t_y_masks, t_channel_pows)):
             yield t_x_point, t_y_point, t_y_mask, t_channel_pow, file_path, i
 
 
-def load_numpy_array(file_path, scaler):
+def load_numpy_array(file_path, scaler, building_value=None):
     t_x_points, t_channel_pows, t_y_masks = np.load(file_path, allow_pickle=True)
+    if building_value:
+        pass
+
     t_y_points = t_channel_pows * t_y_masks
     if scaler:
         t_x_mask = t_x_points[:,1,:,:] == 1
