@@ -19,6 +19,11 @@ class SparseBaseAutoencoder(Autoencoder):
         self.encoder = SparseBaseEncoder(enc_in, enc_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
         self.decoder = SparseBaseDecoder(enc_out, dec_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
 
+    def forward(self, x, mask):
+        x = self.encoder(x, mask)
+        x = self.decoder(x)
+        return x
+
     def fit(self, train_dl, optimizer, epochs=100, loss='mse'):
         for epoch in range(epochs):
             running_loss = 0.0
@@ -28,7 +33,7 @@ class SparseBaseAutoencoder(Autoencoder):
                 t_x_point, t_y_point, t_y_mask = t_x_point.to(torch.float32).to(device), t_y_point.flatten(1).to(device), t_y_mask.flatten(1).to(device)
                 t_channel_pow = t_channel_pow.flatten(1).to(device)
                 mask = (t_x_point[:,1] != 0).to(torch.float32)
-                t_y_point_pred = self.forward(t_x_point[:,0], mask).to(torch.float64)
+                t_y_point_pred = self.forward(t_x_point[:,0].unsqueeze(1), mask.unsqueeze(1)).to(torch.float64)
                 loss_ = torch.nn.functional.mse_loss(t_y_point * t_y_mask, t_y_point_pred * t_y_mask).to(torch.float32)
                 if loss == 'rmse':
                     loss_ = torch.sqrt(loss_)
@@ -47,7 +52,7 @@ class SparseBaseAutoencoder(Autoencoder):
                     t_x_point, t_y_point, t_y_mask = t_x_point.to(torch.float32).to(device), t_y_point.flatten(1).to(device), t_y_mask.flatten(1).to(device)
                     t_channel_pow = t_channel_pow.flatten(1).to(device).detach().cpu().numpy()
                     mask = (t_x_point[:,1] != 0).to(torch.float32)
-                    t_y_point_pred = self.forward(t_x_point[:,0], mask).detach().cpu().numpy()
+                    t_y_point_pred = self.forward(t_x_point[:,0].unsqueeze(1), mask.unsqueeze(1)).detach().cpu().numpy()
                     building_mask = (t_x_point[:,1,:,:].flatten(1) == -1).to(torch.float64).detach().cpu().numpy()
                     loss = (np.linalg.norm((1 - building_mask) * (scaler.reverse_transform(t_channel_pow) - scaler.reverse_transform(t_y_point_pred)), axis=1) ** 2 / np.sum(building_mask == 0, axis=1)).tolist()
                     losses += loss
