@@ -235,7 +235,7 @@ class UNetAutoencoder_NoMask(UNetAutoencoder):
             for i, data in enumerate(train_dl):
                 optimizer.zero_grad()
                 t_x_point, t_y_point, t_y_mask, t_channel_pow, file_path, j = data
-                t_x_point = t_x_point[:0].unsqueeze(1)
+                t_x_point = t_x_point[:,0].unsqueeze(1)
                 t_x_point, t_y_point, t_y_mask = t_x_point.to(torch.float32).to(device), t_y_point.flatten(1).to(device), t_y_mask.flatten(1).to(device)
                 t_channel_pow = t_channel_pow.flatten(1).to(device)
                 t_y_point_pred = self.forward(t_x_point).to(torch.float64)
