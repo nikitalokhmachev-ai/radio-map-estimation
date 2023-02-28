@@ -6,6 +6,8 @@ from .vae import Encoder as VariationalEncoder, Decoder as VariationalDecoder
 from .resnet_vae import Encoder as ResnetVariationalEncoder, Decoder as ResnetVariationalDecoder
 from .sparse_base import Encoder as SparseBaseEncoder, Decoder as SparseBaseDecoder
 from .sparse_unet import Encoder as SparseUNetEncoder, Decoder as SparseUNetDecoder
+from .sparse_base_maxpool import Encoder as SparseBaseEncoder_MaxPool, Decoder as SparseBaseDecoder_MaxPool
+from .sparse_unet_maxpool import Encoder as SparseUnetEncoder_MaxPool, Decoder as SparseUNetDecoder_MaxPool
 from .autoencoder import Autoencoder
 
 import torch
@@ -199,3 +201,21 @@ class SparseUNetAutoencoder(SparseBaseAutoencoder):
         x, skip1, skip2, skip3 = self.encoder(x, mask)
         x = self.decoder(x, skip1, skip2, skip3)
         return x
+    
+
+
+class SparseBaseAutoencoder_MaxPool(SparseBaseAutoencoder):
+    def __init__(self, enc_in=2, enc_out=4, dec_out=1, n_dim=27, leaky_relu_alpha=0.3):
+        super().__init__()
+
+        self.encoder = SparseBaseEncoder_MaxPool(enc_in, enc_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
+        self.decoder = SparseBaseDecoder_MaxPool(enc_out, dec_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
+
+
+
+class SparseUNetAutoencoder_MaxPool(SparseUNetAutoencoder):
+    def __init__(self, enc_in=2, enc_out=4, dec_out=1, n_dim=27, leaky_relu_alpha=0.3):
+        super().__init__()
+
+        self.encoder = SparseUnetEncoder_MaxPool(enc_in, enc_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
+        self.decoder = SparseUNetDecoder_MaxPool(enc_out, dec_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
