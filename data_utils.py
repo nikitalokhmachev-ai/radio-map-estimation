@@ -45,7 +45,7 @@ def load_numpy_array(file_path, scaler, building_value=None, unsampled_value=Non
         t_x_points[:,0][t_x_points[:,1] == 0] = unsampled_value
 
     if sampled_value:
-        t_x_points[:0][t_x_points[:1] == 1] += sampled_value
+        t_x_points[:,0][t_x_points[:,1] == 1] += sampled_value
     
     return t_x_points, t_y_points, t_y_masks, t_channel_pows
   
