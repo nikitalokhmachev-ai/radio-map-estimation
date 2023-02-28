@@ -226,7 +226,7 @@ class UNetAutoencoder_NoMask(UNetAutoencoder):
     def __init__(self, enc_in=1, enc_out=4, dec_out=1, n_dim=27, leaky_relu_alpha=0.3):
         super().__init__()
 
-        self.encoder = UNetEncoder(enc_in, enc_out, n_dim, leaky_relu_apha=leaky_relu_alpha)
+        self.encoder = UNetEncoder(enc_in, enc_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
         self.decoder = UNetDecoder(enc_out, dec_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
 
     def fit(self, train_dl, optimizer, epochs=100, loss='mse'):
