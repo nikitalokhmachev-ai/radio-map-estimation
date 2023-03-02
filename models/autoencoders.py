@@ -281,8 +281,8 @@ class UNetAutoencoder_BuildingMask(UNetAutoencoder):
             for i, data in enumerate(train_dl):
                 optimizer.zero_grad()
                 t_x_point, t_y_point, t_y_mask, t_channel_pow, file_path, j = data
-                t_x_building = (t_x_point[:,1,:,:] == -1).unsqueeze(0) * 1
-                t_x_sample = (t_x_point[:,1,:,:] == 1).unsqueeze(0) * 1
+                t_x_building = (t_x_point[:,1,:,:] == -1).unsqueeze(1) * 1
+                t_x_sample = (t_x_point[:,1,:,:] == 1).unsqueeze(1) * 1
                 t_x_point = t_x_point[:,0].unsqueeze(1)
                 t_x_point = torch.cat([t_x_point, t_x_sample, t_x_building], dim=1)
                 t_x_point, t_y_point, t_y_mask = t_x_point.to(torch.float32).to(device), t_y_point.flatten(1).to(device), t_y_mask.flatten(1).to(device)
@@ -304,8 +304,8 @@ class UNetAutoencoder_BuildingMask(UNetAutoencoder):
             for i, data in enumerate(test_dl):
                     t_x_point, t_y_point, t_y_mask, t_channel_pow, file_path, j = data
                     building_mask = (t_x_point[:,1,:,:].flatten(1) == -1).to(torch.float64).detach().cpu().numpy()
-                    t_x_building = (t_x_point[:,1,:,:] == -1).unsqueeze(0) * 1
-                    t_x_sample = (t_x_point[:,1,:,:] == 1).unsqueeze(0) * 1
+                    t_x_building = (t_x_point[:,1,:,:] == -1).unsqueeze(1) * 1
+                    t_x_sample = (t_x_point[:,1,:,:] == 1).unsqueeze(1) * 1
                     t_x_point = t_x_point[:,0].unsqueeze(1)
                     t_x_point = torch.cat([t_x_point, t_x_sample, t_x_building], dim=1)
                     t_x_point, t_y_point, t_y_mask = t_x_point.to(torch.float32).to(device), t_y_point.flatten(1).to(device), t_y_mask.flatten(1).to(device)
