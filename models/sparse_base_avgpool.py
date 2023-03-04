@@ -26,7 +26,7 @@ class Encoder(nn.Module):
 
         self.average_pooling2d = nn.AvgPool2d(kernel_size=(2, 2))
         self.mask_avg_pooling2d = nn.AvgPool2d(kernel_size=(2, 2))
-        self.mask_avg_pooling2d_pad = nn.AVGPool2d(kernel_size=(3,3), padding=1, stride=1)
+        self.mask_avg_pooling2d_pad = nn.AvgPool2d(kernel_size=(3,3), padding=1, stride=1)
 
         self.leaky_relu = torch.nn.LeakyReLU(negative_slope=leaky_relu_alpha)
 
