@@ -9,6 +9,9 @@ from .sparse_unet import Encoder as SparseUNetEncoder, Decoder as SparseUNetDeco
 from .sparse_base_maxpool import Encoder as SparseBaseEncoder_MaxPool, Decoder as SparseBaseDecoder_MaxPool
 from .sparse_base_avgpool import Encoder as SparseBaseEncoder_AvgPool, Decoder as SparseBaseDecoder_AvgPool
 from .sparse_unet_maxpool import Encoder as SparseUnetEncoder_MaxPool, Decoder as SparseUNetDecoder_MaxPool
+from .sparse_batchnorm_base import Encoder as SparseBaseBNEncoder, Decoder as SparseBaseBNDecoder
+from .sparse_batchnorm_base_avgpool import Encoder as SparseBaseBNEncoder_AvgPool, Decoder as SparseBaseBNDecoder_AvgPool
+from .sparse_batchnorm_base_maxpool import Encoder as SparseBaseBNEncoder_MaxPool, Decoder as SparseBaseBNDecoder_MaxPool
 from .autoencoder import Autoencoder
 
 import torch
@@ -24,7 +27,20 @@ class BaseAutoencoder(Autoencoder):
         self.encoder = BaseEncoder(enc_in, enc_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
         self.decoder = BaseDecoder(enc_out, dec_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
 
+class BaseSplitAutoencoder(Autoencoder):
+    def __init__(self, enc_in=2, enc_out=4, dec_out=1, n_dim=27, leaky_relu_alpha=0.3):
+        super().__init__()
 
+        self.encoder_map = BaseEncoder(1, enc_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
+        self.encoder_mask = BaseEncoder(1, enc_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
+        self.decoder = BaseDecoder(enc_out*2, dec_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
+
+    def forward(self, x):
+        x_map = self.encoder_map(x[:,0,:,:].unsqueeze(1))
+        x_mask = self.encoder_mask(x[:,1,:,:].unsqueeze(1))
+        x = torch.cat([x_map, x_mask], 1)
+        x = self.decoder(x)
+        return x
 
 class ResnetAutoencoder(Autoencoder):
     def __init__(self, enc_in=2, enc_out=4, dec_out=1, n_dim=27, leaky_relu_alpha=0.3):
@@ -199,6 +215,27 @@ class SparseBaseAutoencoder(Autoencoder):
             return torch.sqrt(torch.Tensor(losses).mean())
         
 
+class SparseBaseBNAutoencoder(SparseBaseAutoencoder):
+    def __init__(self, enc_in=2, enc_out=4, dec_out=1, n_dim=27, leaky_relu_alpha=0.3):
+        super().__init__(enc_in=enc_in)
+
+        self.encoder = SparseBaseBNEncoder(enc_in, enc_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
+        self.decoder = SparseBaseBNDecoder(enc_out, dec_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
+
+
+class SparseBaseBNAutoencoder_MaxPool(SparseBaseAutoencoder):
+    def __init__(self, enc_in=2, enc_out=4, dec_out=1, n_dim=27, leaky_relu_alpha=0.3):
+        super().__init__(enc_in=enc_in)
+
+        self.encoder = SparseBaseBNEncoder_MaxPool(enc_in, enc_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
+        self.decoder = SparseBaseBNDecoder_MaxPool(enc_out, dec_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
+
+class SparseBaseBNAutoencoder_AvgPool(SparseBaseAutoencoder):
+    def __init__(self, enc_in=2, enc_out=4, dec_out=1, n_dim=27, leaky_relu_alpha=0.3):
+        super().__init__(enc_in=enc_in)
+
+        self.encoder = SparseBaseBNEncoder_AvgPool(enc_in, enc_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
+        self.decoder = SparseBaseBNDecoder_AvgPool(enc_out, dec_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
 
 class SparseBaseAutoencoder_MaxPool(SparseBaseAutoencoder):
     def __init__(self, enc_in=2, enc_out=4, dec_out=1, n_dim=27, leaky_relu_alpha=0.3):
