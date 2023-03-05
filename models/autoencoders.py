@@ -28,12 +28,12 @@ class BaseAutoencoder(Autoencoder):
         self.decoder = BaseDecoder(enc_out, dec_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
 
 class BaseSplitAutoencoder(Autoencoder):
-    def __init__(self, enc_in=2, enc_out=4, dec_out=1, n_dim=27, leaky_relu_alpha=0.3):
+    def __init__(self, enc_in=2, enc_out=4, dec_out=1, n_dim_map=27, n_dim_mask=27, n_dim_dec=27, leaky_relu_alpha=0.3):
         super().__init__()
 
-        self.encoder_map = BaseEncoder(1, enc_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
-        self.encoder_mask = BaseEncoder(1, enc_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
-        self.decoder = BaseDecoder(enc_out*2, dec_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
+        self.encoder_map = BaseEncoder(1, enc_out, n_dim_map, leaky_relu_alpha=leaky_relu_alpha)
+        self.encoder_mask = BaseEncoder(1, enc_out, n_dim_mask, leaky_relu_alpha=leaky_relu_alpha)
+        self.decoder = BaseDecoder(enc_out*2, dec_out, n_dim_dec, leaky_relu_alpha=leaky_relu_alpha)
 
     def forward(self, x):
         x_map = self.encoder_map(x[:,0,:,:].unsqueeze(1))
