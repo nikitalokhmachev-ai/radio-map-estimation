@@ -16,12 +16,20 @@ class SparseConv2d(torch.nn.Module):
       self.out_channels = out_channels
       self.kernel_size = kernel_size
       self.stride = stride
-      self.feature_conv = torch.nn.Conv2d(self.in_channels, self.out_channels, self.kernel_size, bias=False, padding=padding)
-      self.norm_conv = torch.nn.Conv2d(1, self.out_channels, self.kernel_size, bias=False, padding=padding)
-      self.batch_norm = torch.nn.BatchNorm2d(out_channels)
-      self.norm_conv.requires_grad_(False)  
       if self.stride != 1:
         raise Exception(f'Sparse Convolution only supports the stride of 1. Stride = {self.stride}')
+
+      self.feature_conv = torch.nn.Conv2d(self.in_channels, self.out_channels, self.kernel_size, bias=False, padding=padding)
+      self.norm_conv = torch.nn.Conv2d(1, self.out_channels, self.kernel_size, bias=False, padding=padding)
+      self.norm_conv.requires_grad_(False)
+      self.bias = torch.zeros(out_channels, 1, 1)
+      if torch.cuda.is_available():
+          self.bias = self.bias.cuda()
+      self.bias = torch.nn.Parameter(self.bias) 
+      self.batch_norm = torch.nn.BatchNorm2d(out_channels)
+
+      self.binary_mask = None
+      self.norm = None  
 
       self._init_weights()
 
@@ -35,11 +43,12 @@ class SparseConv2d(torch.nn.Module):
 
       norm = self.norm_conv(binary_mask)
       norm = torch.where(torch.eq(norm, 0), torch.zeros_like(norm), torch.reciprocal(norm))
-      b = torch.zeros(norm.shape[-1])
-      if torch.cuda.is_available():
-          b = b.cuda()
-      b = torch.nn.Parameter(b)
-      feature = features * norm + b
+
+      # Assign latest values to layer attributes so that we can check them after training
+      self.binary_mask = binary_mask
+      self.norm = norm
+
+      feature = features * norm + self.bias
       feature = self.batch_norm(feature)
 
       return feature, binary_mask
