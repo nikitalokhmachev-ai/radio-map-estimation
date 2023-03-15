@@ -15,7 +15,7 @@ class FullAutoencoder(Autoencoder):
                 optimizer.zero_grad()
                 t_x_point, t_y_point, t_y_mask, t_channel_pow, file_path, j = data
                 t_x_point, t_y_point, t_y_mask = t_x_point.to(torch.float32).to(device), t_y_point.flatten(1).to(device), t_y_mask.flatten(1).to(device)
-                t_channel_pow = t_channel_pow.to(device)
+                t_channel_pow = t_channel_pow.to(torch.float32).to(device)
 
                 mask = (t_x_point[:,1] == -1).unsqueeze(1).to(torch.float32)
                 x = torch.cat([t_channel_pow, mask], 1)
@@ -38,7 +38,7 @@ class FullAutoencoder(Autoencoder):
             for i, data in enumerate(test_dl):
                     t_x_point, t_y_point, t_y_mask, t_channel_pow, file_path, j = data
                     t_x_point, t_y_point, t_y_mask = t_x_point.to(torch.float32).to(device), t_y_point.flatten(1).to(device), t_y_mask.flatten(1).to(device)
-                    t_channel_pow = t_channel_pow.to(device).detach().cpu().numpy()
+                    t_channel_pow = t_channel_pow.to(torch.float32).to(device).detach().cpu().numpy()
 
                     mask = (t_x_point[:,1] == -1).unsqueeze(1).to(torch.float32)
                     x = torch.cat([t_channel_pow, mask], 1)
