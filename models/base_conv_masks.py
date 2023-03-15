@@ -35,7 +35,6 @@ class Encoder(nn.Module):
         self.mask_conv2d_6 = nn.Conv2d(1, 1, kernel_size=(3, 3), padding='same')
         self.mask_conv2d_7 = nn.Conv2d(1, 1, kernel_size=(3, 3), padding='same')
         self.mask_conv2d_8 = nn.Conv2d(1, 1, kernel_size=(3, 3), padding='same')
-        self.mu = nn.Conv2d(1, 1, kernel_size=(3, 3), padding='same')
 
         self.leaky_relu = torch.nn.LeakyReLU(negative_slope=leaky_relu_alpha)
 
