@@ -12,6 +12,7 @@ from .sparse_unet_maxpool import Encoder as SparseUnetEncoder_MaxPool, Decoder a
 from .sparse_batchnorm_base import Encoder as SparseBaseBNEncoder, Decoder as SparseBaseBNDecoder
 from .sparse_batchnorm_base_avgpool import Encoder as SparseBaseBNEncoder_AvgPool, Decoder as SparseBaseBNDecoder_AvgPool
 from .sparse_batchnorm_base_maxpool import Encoder as SparseBaseBNEncoder_MaxPool, Decoder as SparseBaseBNDecoder_MaxPool
+from .base_concat_masks import Encoder as BaseConcatMaskEncoder, Decoder as BaseConcatMaskDecoder
 from .autoencoder import Autoencoder
 
 import torch
@@ -373,3 +374,14 @@ class UNetAutoencoder_BuildingMask(UNetAutoencoder):
                     print(f'{np.sqrt(np.mean(loss))}')
                     
             return torch.sqrt(torch.Tensor(losses).mean())
+
+
+class BaseConcatMaskAutoencoder(Autoencoder):
+    def __init__(self, enc_in, enc_out=4, dec_out=1, n_dim=27, leaky_relu_alpha=0.3):
+        super().__init__()
+        self.enc_in = enc_in
+
+        self.encoder = BaseConcatMaskEncoder(enc_in, enc_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
+        self.decoder = BaseConcatMaskDecoder(enc_out, dec_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
+
+    
