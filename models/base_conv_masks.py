@@ -26,18 +26,16 @@ class Encoder(nn.Module):
         self.average_pooling2d_2 = nn.AvgPool2d(kernel_size=(2, 2))
         self.mu = nn.Conv2d(n_dim+1, enc_out, kernel_size=(3, 3), padding='same')
 
-        self.mask_conv2d = nn.Conv2d(enc_in, n_dim, kernel_size=(3, 3), padding='same')
-        self.mask_conv2d_1 = nn.Conv2d(n_dim+1, n_dim, kernel_size=(3, 3), padding='same')
-        self.mask_conv2d_2 = nn.Conv2d(n_dim+1, n_dim, kernel_size=(3, 3), padding='same')
-        self.mask_conv2d_3 = nn.Conv2d(n_dim+1, n_dim, kernel_size=(3, 3), padding='same')
-        self.mask_conv2d_4 = nn.Conv2d(n_dim+1, n_dim, kernel_size=(3, 3), padding='same')
-        self.mask_conv2d_5 = nn.Conv2d(n_dim+1, n_dim, kernel_size=(3, 3), padding='same')
-        self.mask_conv2d_6 = nn.Conv2d(n_dim+1, n_dim, kernel_size=(3, 3), padding='same')
-        self.mask_conv2d_7 = nn.Conv2d(n_dim+1, n_dim, kernel_size=(3, 3), padding='same')
-        self.mask_conv2d_8 = nn.Conv2d(n_dim+1, n_dim, kernel_size=(3, 3), padding='same')
-        self.mu = nn.Conv2d(n_dim+1, enc_out, kernel_size=(3, 3), padding='same')
-
-
+        self.mask_conv2d = nn.Conv2d(1, 1, kernel_size=(3, 3), padding='same')
+        self.mask_conv2d_1 = nn.Conv2d(1, 1, kernel_size=(3, 3), padding='same')
+        self.mask_conv2d_2 = nn.Conv2d(1, 1, kernel_size=(3, 3), padding='same')
+        self.mask_conv2d_3 = nn.Conv2d(1, 1, kernel_size=(3, 3), padding='same')
+        self.mask_conv2d_4 = nn.Conv2d(1, 1, kernel_size=(3, 3), padding='same')
+        self.mask_conv2d_5 = nn.Conv2d(1, 1, kernel_size=(3, 3), padding='same')
+        self.mask_conv2d_6 = nn.Conv2d(1, 1, kernel_size=(3, 3), padding='same')
+        self.mask_conv2d_7 = nn.Conv2d(1, 1, kernel_size=(3, 3), padding='same')
+        self.mask_conv2d_8 = nn.Conv2d(1, 1, kernel_size=(3, 3), padding='same')
+        self.mu = nn.Conv2d(1, 1, kernel_size=(3, 3), padding='same')
 
         self.leaky_relu = torch.nn.LeakyReLU(negative_slope=leaky_relu_alpha)
 
