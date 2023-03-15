@@ -37,7 +37,7 @@ class Encoder(nn.Module):
         self.mask_conv2d_8 = nn.Conv2d(1, 1, kernel_size=(3, 3), padding='same')
 
         self.leaky_relu = torch.nn.LeakyReLU(negative_slope=leaky_relu_alpha)
-
+ 
         self._init_weights()
     
     def _init_weights(self):
