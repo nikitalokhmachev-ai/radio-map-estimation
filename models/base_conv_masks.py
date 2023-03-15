@@ -12,20 +12,32 @@ device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 class Encoder(nn.Module):
     def __init__(self, enc_in, enc_out, n_dim, leaky_relu_alpha=0.3):
         super(Encoder, self).__init__()
-        n_dim += 1
         self.conv2d = nn.Conv2d(enc_in, n_dim, kernel_size=(3, 3), padding='same')
-        self.conv2d_1 = nn.Conv2d(n_dim, n_dim, kernel_size=(3, 3), padding='same')
-        self.conv2d_2 = nn.Conv2d(n_dim, n_dim, kernel_size=(3, 3), padding='same')
+        self.conv2d_1 = nn.Conv2d(n_dim+1, n_dim, kernel_size=(3, 3), padding='same')
+        self.conv2d_2 = nn.Conv2d(n_dim+1, n_dim, kernel_size=(3, 3), padding='same')
         self.average_pooling2d = nn.AvgPool2d(kernel_size=(2, 2))
-        self.conv2d_3 = nn.Conv2d(n_dim, n_dim, kernel_size=(3, 3), padding='same')
-        self.conv2d_4 = nn.Conv2d(n_dim, n_dim, kernel_size=(3, 3), padding='same')
-        self.conv2d_5 = nn.Conv2d(n_dim, n_dim, kernel_size=(3, 3), padding='same')
+        self.conv2d_3 = nn.Conv2d(n_dim+1, n_dim, kernel_size=(3, 3), padding='same')
+        self.conv2d_4 = nn.Conv2d(n_dim+1, n_dim, kernel_size=(3, 3), padding='same')
+        self.conv2d_5 = nn.Conv2d(n_dim+1, n_dim, kernel_size=(3, 3), padding='same')
         self.average_pooling2d_1 = nn.AvgPool2d(kernel_size=(2, 2))
-        self.conv2d_6 = nn.Conv2d(n_dim, n_dim, kernel_size=(3, 3), padding='same')
-        self.conv2d_7 = nn.Conv2d(n_dim, n_dim, kernel_size=(3, 3), padding='same')
-        self.conv2d_8 = nn.Conv2d(n_dim, n_dim, kernel_size=(3, 3), padding='same')
+        self.conv2d_6 = nn.Conv2d(n_dim+1, n_dim, kernel_size=(3, 3), padding='same')
+        self.conv2d_7 = nn.Conv2d(n_dim+1, n_dim, kernel_size=(3, 3), padding='same')
+        self.conv2d_8 = nn.Conv2d(n_dim+1, n_dim, kernel_size=(3, 3), padding='same')
         self.average_pooling2d_2 = nn.AvgPool2d(kernel_size=(2, 2))
-        self.mu = nn.Conv2d(n_dim, enc_out, kernel_size=(3, 3), padding='same')
+        self.mu = nn.Conv2d(n_dim+1, enc_out, kernel_size=(3, 3), padding='same')
+
+        self.mask_conv2d = nn.Conv2d(enc_in, n_dim, kernel_size=(3, 3), padding='same')
+        self.mask_conv2d_1 = nn.Conv2d(n_dim+1, n_dim, kernel_size=(3, 3), padding='same')
+        self.mask_conv2d_2 = nn.Conv2d(n_dim+1, n_dim, kernel_size=(3, 3), padding='same')
+        self.mask_conv2d_3 = nn.Conv2d(n_dim+1, n_dim, kernel_size=(3, 3), padding='same')
+        self.mask_conv2d_4 = nn.Conv2d(n_dim+1, n_dim, kernel_size=(3, 3), padding='same')
+        self.mask_conv2d_5 = nn.Conv2d(n_dim+1, n_dim, kernel_size=(3, 3), padding='same')
+        self.mask_conv2d_6 = nn.Conv2d(n_dim+1, n_dim, kernel_size=(3, 3), padding='same')
+        self.mask_conv2d_7 = nn.Conv2d(n_dim+1, n_dim, kernel_size=(3, 3), padding='same')
+        self.mask_conv2d_8 = nn.Conv2d(n_dim+1, n_dim, kernel_size=(3, 3), padding='same')
+        self.mu = nn.Conv2d(n_dim+1, enc_out, kernel_size=(3, 3), padding='same')
+
+
 
         self.leaky_relu = torch.nn.LeakyReLU(negative_slope=leaky_relu_alpha)
 
@@ -42,31 +54,46 @@ class Encoder(nn.Module):
 
         x = torch.cat([x, m], 1)
         x = self.leaky_relu(self.conv2d(x))
+        m = self.leaky_relu(self.mask_conv2d(m))
+
         x = torch.cat([x, m], 1)
         x = self.leaky_relu(self.conv2d_1(x))
+        m = self.leaky_relu(self.mask_conv2d_1(m))
+
         x = torch.cat([x, m], 1)
         x = self.leaky_relu(self.conv2d_2(x))
-        x = torch.cat([x, m], 1)
+        m = self.leaky_relu(self.mask_conv2d_2(m))
+
         x = self.average_pooling2d(x)
         m = torch.nn.functional.interpolate(m, scale_factor = (0.5, 0.5))
 
         x = torch.cat([x, m], 1)
         x = self.leaky_relu(self.conv2d_3(x))
+        m = self.leaky_relu(self.mask_conv2d_3(m))
+
         x = torch.cat([x, m], 1)
         x = self.leaky_relu(self.conv2d_4(x))
+        m = self.leaky_relu(self.mask_conv2d_4(m))
+
         x = torch.cat([x, m], 1)
         x = self.leaky_relu(self.conv2d_5(x))
-        x = torch.cat([x, m], 1)
+        m = self.leaky_relu(self.mask_conv2d_5(m))
+
         x = self.average_pooling2d_1(x)
         m = torch.nn.functional.interpolate(m, scale_factor = (0.5, 0.5))
 
         x = torch.cat([x, m], 1)
         x = self.leaky_relu(self.conv2d_6(x))
+        m = self.leaky_relu(self.mask_conv2d_6(m))
+
         x = torch.cat([x, m], 1)
         x = self.leaky_relu(self.conv2d_7(x))
+        m = self.leaky_relu(self.mask_conv2d_7(m))
+
         x = torch.cat([x, m], 1)
         x = self.leaky_relu(self.conv2d_8(x))
-        x = torch.cat([x, m], 1)
+        m = self.leaky_relu(self.mask_conv2d_8(m))
+
         x = self.average_pooling2d_2(x)
         m = torch.nn.functional.interpolate(m, scale_factor = (0.5, 0.5))
 
