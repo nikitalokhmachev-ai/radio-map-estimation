@@ -15,12 +15,13 @@ class FullAutoencoder(Autoencoder):
                 optimizer.zero_grad()
                 t_x_point, t_y_point, t_y_mask, t_channel_pow, file_path, j = data
                 t_x_point, t_y_point, t_y_mask = t_x_point.to(torch.float32).to(device), t_y_point.flatten(1).to(device), t_y_mask.flatten(1).to(device)
-                t_channel_pow = t_channel_pow.flatten(1).to(device)
+                t_channel_pow = t_channel_pow.to(device)
 
                 mask = (t_x_point[:,1] == -1).to(torch.float32)
                 x = torch.cat([t_channel_pow, mask], 1)
 
                 t_y_point_pred = self.forward(x).to(torch.float64)
+                t_channel_pow = t_channel_pow.flatten(1)
                 loss_ = torch.nn.functional.mse_loss(t_channel_pow * t_y_mask, t_y_point_pred * t_y_mask).to(torch.float32)
                 if loss == 'rmse':
                     loss_ = torch.sqrt(loss_)
@@ -37,12 +38,13 @@ class FullAutoencoder(Autoencoder):
             for i, data in enumerate(test_dl):
                     t_x_point, t_y_point, t_y_mask, t_channel_pow, file_path, j = data
                     t_x_point, t_y_point, t_y_mask = t_x_point.to(torch.float32).to(device), t_y_point.flatten(1).to(device), t_y_mask.flatten(1).to(device)
-                    t_channel_pow = t_channel_pow.flatten(1).to(device).detach().cpu().numpy()
+                    t_channel_pow = t_channel_pow.to(device).detach().cpu().numpy()
 
                     mask = (t_x_point[:,1] == -1).to(torch.float32)
                     x = torch.cat([t_channel_pow, mask], 1)
 
                     t_y_point_pred = self.forward(x).detach().cpu().numpy()
+                    t_channel_pow = t_channel_pow.flatten(1)
                     building_mask = (t_x_point[:,1,:,:].flatten(1) == -1).to(torch.float64).detach().cpu().numpy()
                     loss = (np.linalg.norm((1 - building_mask) * (scaler.reverse_transform(t_channel_pow) - scaler.reverse_transform(t_y_point_pred)), axis=1) ** 2 / np.sum(building_mask == 0, axis=1)).tolist()
                     losses += loss
