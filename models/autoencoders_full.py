@@ -1,4 +1,4 @@
-from .base import Encoder as BaseEncoder, Decoder as BaseDecoder
+from .base_batchnorm import Encoder as BaseEncoder, Decoder as BaseDecoder
 from .base_concat_masks import Encoder as BaseConcatMaskEncoder, Decoder as BaseConcatMaskDecoder
 from .base_conv_masks import Encoder as BaseConvMaskEncoder, Decoder as BaseConvMaskDecoder
 from .autoencoder import Autoencoder
@@ -52,26 +52,8 @@ class FullAutoencoder(Autoencoder):
                     print(f'{np.sqrt(np.mean(loss))}')
                     
             return torch.sqrt(torch.Tensor(losses).mean())
-        
-
-class FullBaseConcatMaskAutoencoder(FullAutoencoder):
-    def __init__(self, enc_in, enc_out=4, dec_out=1, n_dim=27, leaky_relu_alpha=0.3):
-        super().__init__()
-        self.enc_in = enc_in
-
-        self.encoder = BaseConcatMaskEncoder(enc_in, enc_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
-        self.decoder = BaseConcatMaskDecoder(enc_out, dec_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
 
 
-class FullBaseConvMaskAutoencoder(FullAutoencoder):
-    def __init__(self, enc_in, enc_out=4, dec_out=1, n_dim=27, leaky_relu_alpha=0.3):
-        super().__init__()
-        self.enc_in = enc_in
-
-        self.encoder = BaseConvMaskEncoder(enc_in, enc_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
-        self.decoder = BaseConvMaskDecoder(enc_out, dec_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
-
-    
 
 class FullBaseAutoencoder(FullAutoencoder):
     def __init__(self, enc_in=2, enc_out=4, dec_out=1, n_dim=27, leaky_relu_alpha=0.3):
@@ -79,6 +61,7 @@ class FullBaseAutoencoder(FullAutoencoder):
 
         self.encoder = BaseEncoder(enc_in, enc_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
         self.decoder = BaseDecoder(enc_out, dec_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
+
 
 
 class FullBaseSplitAutoencoder(FullAutoencoder):
@@ -95,3 +78,23 @@ class FullBaseSplitAutoencoder(FullAutoencoder):
         x = torch.cat([x_map, x_mask], 1)
         x = self.decoder(x)
         return x
+
+
+
+class FullBaseConcatMaskAutoencoder(FullAutoencoder):
+    def __init__(self, enc_in, enc_out=4, dec_out=1, n_dim=27, leaky_relu_alpha=0.3):
+        super().__init__()
+        self.enc_in = enc_in
+
+        self.encoder = BaseConcatMaskEncoder(enc_in, enc_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
+        self.decoder = BaseConcatMaskDecoder(enc_out, dec_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
+
+
+
+class FullBaseConvMaskAutoencoder(FullAutoencoder):
+    def __init__(self, enc_in, enc_out=4, dec_out=1, n_dim=27, leaky_relu_alpha=0.3):
+        super().__init__()
+        self.enc_in = enc_in
+
+        self.encoder = BaseConvMaskEncoder(enc_in, enc_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
+        self.decoder = BaseConvMaskDecoder(enc_out, dec_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
