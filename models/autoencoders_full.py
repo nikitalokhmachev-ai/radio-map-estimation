@@ -1,5 +1,5 @@
-from .base_batchnorm import Encoder as BaseEncoder, Decoder as BaseDecoder
-from .base import Encoder as BaseEncoder_noBN, Decoder as BaseDecoder_noBN
+from .base import Encoder as BaseEncoder, Decoder as BaseDecoder
+from .base_batchnorm import Encoder as BaseEncoderBN, Decoder as BaseDecoderBN
 from .base_concat_masks import Encoder as BaseConcatMaskEncoder, Decoder as BaseConcatMaskDecoder
 from .base_conv_masks import Encoder as BaseConvMaskEncoder, Decoder as BaseConvMaskDecoder
 from .autoencoder import Autoencoder
@@ -65,12 +65,12 @@ class FullBaseAutoencoder(FullAutoencoder):
 
 
 
-class FullBaseAutoencoder_noBatchNorm(FullAutoencoder):
+class FullBaseAutoencoderBatchNorm(FullAutoencoder):
     def __init__(self, enc_in=2, enc_out=4, dec_out=1, n_dim=27, leaky_relu_alpha=0.3):
         super().__init__()
 
-        self.encoder = BaseEncoder_noBN(enc_in, enc_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
-        self.decoder = BaseDecoder_noBN(enc_out, dec_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
+        self.encoder = BaseEncoderBN(enc_in, enc_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
+        self.decoder = BaseEncoderBN(enc_out, dec_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
 
 
 
