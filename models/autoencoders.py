@@ -10,6 +10,8 @@ from .sparse_base_maxpool import Encoder as SparseBaseEncoder_MaxPool, Decoder a
 from .sparse_base_avgpool import Encoder as SparseBaseEncoder_AvgPool, Decoder as SparseBaseDecoder_AvgPool
 from .sparse_scaled_base_maxpool import Encoder as SparseBaseScaledEncoder_MaxPool, Decoder as SparseBaseScaledDecoder_MaxPool
 from .sparse_scaled_base_avgpool import Encoder as SparseBaseScaledEncoder_AvgPool, Decoder as SparseBaseScaledDecoder_AvgPool
+from .sparse_scaled_batchnorm_base_maxpool import Encoder as SparseBaseScaledBNEncoder_MaxPool, Decoder as SparseBaseScaledBNDecoder_Maxpool
+from .sparse_scaled_batchnorm_base_avgpool import Encoder as SparseBaseScaledBNEncoder_AvgPool, Decoder as SparseBaseScaledBNDecoder_AvgPool
 from .sparse_unet_maxpool import Encoder as SparseUnetEncoder_MaxPool, Decoder as SparseUNetDecoder_MaxPool
 from .sparse_batchnorm_base import Encoder as SparseBaseBNEncoder, Decoder as SparseBaseBNDecoder
 from .sparse_batchnorm_base_avgpool import Encoder as SparseBaseBNEncoder_AvgPool, Decoder as SparseBaseBNDecoder_AvgPool
@@ -351,6 +353,22 @@ class SparseBaseScaledAutoencoder_AvgPool(SparseBaseAutoencoder):
 
         self.encoder = SparseBaseScaledEncoder_AvgPool(enc_in, enc_out, n_dim, scale=scale, leaky_relu_alpha=leaky_relu_alpha)
         self.decoder = SparseBaseScaledDecoder_AvgPool(enc_out, dec_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
+
+
+class SparseBaseScaledBNAutoencoder_MaxPool(SparseBaseAutoencoder):
+    def __init__(self, enc_in=2, enc_out=4, dec_out=1, n_dim=27, scale=9, leaky_relu_alpha=0.3):
+        super().__init__(enc_in=enc_in)
+
+        self.encoder = SparseBaseScaledBNEncoder_MaxPool(enc_in, enc_out, n_dim, scale=scale, leaky_relu_alpha=leaky_relu_alpha)
+        self.decoder = SparseBaseScaledBNDecoder_Maxpool(enc_out, dec_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
+
+
+class SparseBaseScaledBNAutoencoder_AvgPool(SparseBaseAutoencoder):
+    def __init__(self, enc_in=2, enc_out=4, dec_out=1, n_dim=27, scale=9, leaky_relu_alpha=0.3):
+        super().__init__(enc_in=enc_in)
+
+        self.encoder = SparseBaseScaledBNEncoder_AvgPool(enc_in, enc_out, n_dim, scale=scale, leaky_relu_alpha=leaky_relu_alpha)
+        self.decoder = SparseBaseScaledBNDecoder_AvgPool(enc_out, dec_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
 
 
 # Sparse UNet Autoencoders
