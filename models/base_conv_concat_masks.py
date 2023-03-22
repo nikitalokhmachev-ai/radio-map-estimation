@@ -50,7 +50,7 @@ class Encoder(nn.Module):
         m = x_[:,1].unsqueeze(1)
         m_ = x_[:,1].unsqueeze(1)
 
-        x = torch.cat([x, m, m_], 1)
+        x = torch.cat([x, m], 1)
         x = self.leaky_relu(self.conv2d(x))
         m = self.leaky_relu(self.mask_conv2d(m))
 
