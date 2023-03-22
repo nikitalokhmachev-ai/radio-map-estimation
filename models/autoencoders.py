@@ -19,6 +19,7 @@ from .sparse_batchnorm_base_maxpool import Encoder as SparseBaseBNEncoder_MaxPoo
 from .base_concat_masks import Encoder as BaseConcatMaskEncoder, Decoder as BaseConcatMaskDecoder
 from .base_conv_masks import Encoder as BaseConvMaskEncoder, Decoder as BaseConvMaskDecoder
 from .base_conv_concat_masks import Encoder as BaseConvConcatMaskEncoder, Decoder as BaseConvConcatMaskDecoder
+from .unet_conv_concat_masks import Encoder as UNetConvConcatMaskEncoder, Decoder as UNetConvConcatMaskDecoder
 from .autoencoder import Autoencoder
 
 import torch
@@ -436,4 +437,14 @@ class BaseConvConcatMaskAutoencoder(Autoencoder):
         self.encoder = BaseConvConcatMaskEncoder(enc_in, enc_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
         self.decoder = BaseConvConcatMaskDecoder(enc_out, dec_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
 
-    
+class UnetConvConcatMaskAutoencoder(Autoencoder):
+    def __init__(self, enc_in=2, enc_out=4, dec_out=1, n_dim=27, leaky_relu_alpha=0.3):
+        super().__init__()
+
+        self.encoder = UNetConvConcatMaskEncoder(enc_in, enc_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
+        self.decoder = UNetConvConcatMaskDecoder(enc_out, dec_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
+
+    def forward(self, x):
+        x, skip1, skip2, skip3 = self.encoder(x)
+        x = self.decoder(x, skip1, skip2, skip3)
+        return x
