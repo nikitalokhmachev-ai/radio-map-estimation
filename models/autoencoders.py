@@ -18,6 +18,7 @@ from .sparse_batchnorm_base_avgpool import Encoder as SparseBaseBNEncoder_AvgPoo
 from .sparse_batchnorm_base_maxpool import Encoder as SparseBaseBNEncoder_MaxPool, Decoder as SparseBaseBNDecoder_MaxPool
 from .base_concat_masks import Encoder as BaseConcatMaskEncoder, Decoder as BaseConcatMaskDecoder
 from .base_conv_masks import Encoder as BaseConvMaskEncoder, Decoder as BaseConvMaskDecoder
+from .base_conv_concat_masks import Encoder as BaseConvConcatMaskEncoder, Decoder as BaseConvConcatMaskDecoder
 from .autoencoder import Autoencoder
 
 import torch
@@ -426,5 +427,13 @@ class BaseConvMaskAutoencoder(Autoencoder):
 
         self.encoder = BaseConvMaskEncoder(enc_in, enc_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
         self.decoder = BaseConvMaskDecoder(enc_out, dec_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
+
+class BaseConvConcatMaskAutoencoder(Autoencoder):
+    def __init__(self, enc_in, enc_out=4, dec_out=1, n_dim=27, leaky_relu_alpha=0.3):
+        super().__init__()
+        self.enc_in = enc_in
+
+        self.encoder = BaseConvConcatMaskEncoder(enc_in, enc_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
+        self.decoder = BaseConvConcatMaskDecoder(enc_out, dec_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
 
     
