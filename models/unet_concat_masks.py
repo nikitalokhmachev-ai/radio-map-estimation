@@ -71,7 +71,7 @@ class Encoder(nn.Module):
 
         x = torch.cat([x, m], 1)
         x = self.leaky_relu(self.mu(x))
-        return x
+        return x, skip1, skip2, skip3
     
 
 class Decoder(nn.Module):
