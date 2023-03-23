@@ -461,7 +461,7 @@ class UnetConvConcatMaskAutoencoder(Autoencoder):
         return x
     
 
-class UnetConcatMaskAutoencoder(UNetAutoencoder):
+class UNetConcatMaskAutoencoder(UNetAutoencoder):
     def __init__(self, enc_in=2, enc_out=4, dec_out=1, n_dim=27, leaky_relu_alpha=0.3):
         super().__init__()
 
