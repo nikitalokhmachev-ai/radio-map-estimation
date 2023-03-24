@@ -19,6 +19,7 @@ from .sparse_batchnorm_base_maxpool import Encoder as SparseBaseBNEncoder_MaxPoo
 from .base_concat_masks import Encoder as BaseConcatMaskEncoder, Decoder as BaseConcatMaskDecoder
 from .base_concat_masks_light import Encoder as BaseConcatMaskEncoderLight, Decoder as BaseConcatMaskDecoderLight
 from .base_conv_masks import Encoder as BaseConvMaskEncoder, Decoder as BaseConvMaskDecoder
+from .base_split_conv_concat_masks import Encoder as BaseSplitConvConcatMaskEncoder, Decoder as BaseSplitConvConcatMaskDecoder
 from .base_conv_concat_masks import Encoder as BaseConvConcatMaskEncoder, Decoder as BaseConvConcatMaskDecoder
 from .unet_conv_concat_masks import Encoder as UNetConvConcatMaskEncoder, Decoder as UNetConvConcatMaskDecoder
 from .unet_concat_mask import Encoder as UNetConcatMaskEncoder, Decoder as UNetConcatMaskDecoder
@@ -485,3 +486,9 @@ class UNetConcatMaskOnlyAutoencoder(UNetAutoencoder):
         self.decoder = UNetConcatMaskOnlyDecoder(enc_out, dec_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
 
 
+class BaseSplitConvConcatMasksAutoencoder(Autoencoder):
+    def __init__(self, enc_in, enc_out, dec_out, n_dim_map, n_dim_mask, n_dim_dec=27, leaky_relu_alpha=0.3):
+        super().__init__()
+
+        self.encoder = BaseSplitConvConcatMaskEncoder(enc_in, enc_out, n_dim_map, n_dim_mask, leaky_relu_alpha)
+        self.decoder = BaseSplitConvConcatMaskDecoder(enc_out, dec_out, n_dim_dec, leaky_relu_alpha)
