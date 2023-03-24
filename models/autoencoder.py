@@ -39,6 +39,8 @@ class Autoencoder(torch.nn.Module):
                 running_loss += loss_.item()        
                 print(f'{loss_}, [{epoch + 1}, {i + 1:5d}] loss: {running_loss/(i+1)}')
 
+        return running_loss / (i+1)
+
 
     def evaluate(self, test_dl, scaler):
         losses = []
@@ -56,6 +58,13 @@ class Autoencoder(torch.nn.Module):
                     
             return torch.sqrt(torch.Tensor(losses).mean())
         
+    def fit_wandb(self, train_dl, test_dl, scaler, optimizer, project_name, run_name, epochs=100, loss='mse'):
+        import wandb
+        wandb.init(project=project_name, name=run_name)
+        for epoch in range(epochs):
+            train_loss = self.fit(train_dl, optimizer, epochs=1, loss=loss)
+            test_loss = self.evaluate(test_dl, scaler)
+            wandb.log({'train_loss': train_loss, 'test_loss': test_loss})
 
     def save_model(self, out_path):
         torch.save(self, out_path)

@@ -32,6 +32,8 @@ class FullAutoencoder(Autoencoder):
                 running_loss += loss_.item()        
                 print(f'{loss_}, [{epoch + 1}, {i + 1:5d}] loss: {running_loss/(i+1)}')
 
+        return running_loss / (i+1)
+
 
     def evaluate(self, test_dl, scaler):
         losses = []
