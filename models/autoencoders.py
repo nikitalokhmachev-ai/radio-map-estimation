@@ -20,7 +20,7 @@ from .base_concat_masks import Encoder as BaseConcatMaskEncoder, Decoder as Base
 from .base_concat_masks_light import Encoder as BaseConcatMaskEncoderLight, Decoder as BaseConcatMaskDecoderLight
 from .base_conv_masks import Encoder as BaseConvMaskEncoder, Decoder as BaseConvMaskDecoder
 from .base_split_conv_concat_masks import Encoder as BaseSplitConvConcatMaskEncoder, Decoder as BaseSplitConvConcatMaskDecoder
-from .base_split_conv_concat_masks_light import Encoder as BaseSplitConvConcatMaskLightEncoder, Decoder as BaseSplitConvConcatMaskLightDecoder
+from .base_split_conv_concat_masks_light import Encoder as BaseSplitConvConcatMaskEncoderLight, Decoder as BaseSplitConvConcatMaskDecoderLight
 from .base_conv_concat_masks import Encoder as BaseConvConcatMaskEncoder, Decoder as BaseConvConcatMaskDecoder
 from .unet_conv_concat_masks import Encoder as UNetConvConcatMaskEncoder, Decoder as UNetConvConcatMaskDecoder
 from .unet_concat_mask import Encoder as UNetConcatMaskEncoder, Decoder as UNetConcatMaskDecoder
@@ -495,9 +495,9 @@ class BaseSplitConvConcatMasksAutoencoder(Autoencoder):
         self.decoder = BaseSplitConvConcatMaskDecoder(enc_out, dec_out, n_dim_dec, leaky_relu_alpha)
 
 
-class BaseSplitConvConcatMasksLightAutoencoder(Autoencoder):
+class BaseSplitConvConcatMasksAutoencoderLight(Autoencoder):
     def __init__(self, enc_in, enc_out, dec_out, n_dim_map, n_dim_mask, n_dim_dec=27, leaky_relu_alpha=0.3):
         super().__init__()
 
-        self.encoder = BaseSplitConvConcatMaskLightEncoder(enc_in, enc_out, n_dim_map, n_dim_mask, leaky_relu_alpha)
-        self.decoder = BaseSplitConvConcatMaskLightDecoder(enc_out, dec_out, n_dim_dec, leaky_relu_alpha)
+        self.encoder = BaseSplitConvConcatMaskEncoderLight(enc_in, enc_out, n_dim_map, n_dim_mask, leaky_relu_alpha)
+        self.decoder = BaseSplitConvConcatMaskDecoderLight(enc_out, dec_out, n_dim_dec, leaky_relu_alpha)
