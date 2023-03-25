@@ -20,10 +20,11 @@ from .sparse_batchnorm_base_avgpool import Encoder as SparseBaseBNEncoder_AvgPoo
 from .sparse_batchnorm_base_maxpool import Encoder as SparseBaseBNEncoder_MaxPool, Decoder as SparseBaseBNDecoder_MaxPool
 from .base_concat_masks import Encoder as BaseConcatMaskEncoder, Decoder as BaseConcatMaskDecoder
 from .base_concat_masks_light import Encoder as BaseConcatMaskEncoderLight, Decoder as BaseConcatMaskDecoderLight
+from .base_conv_concat_masks import Encoder as BaseConvConcatMaskEncoder, Decoder as BaseConvConcatMaskDecoder
+from .base_conv_concat_masks_adjust import Encoder as BaseConvConcatMaskAdjustEncoder, Decoder as BaseConvConcatMaskAdjustDecoder
 from .base_conv_masks import Encoder as BaseConvMaskEncoder, Decoder as BaseConvMaskDecoder
 from .base_split_conv_concat_masks import Encoder as BaseSplitConvConcatMaskEncoder, Decoder as BaseSplitConvConcatMaskDecoder
 from .base_split_conv_concat_masks_light import Encoder as BaseSplitConvConcatMaskEncoderLight, Decoder as BaseSplitConvConcatMaskDecoderLight
-from .base_conv_concat_masks import Encoder as BaseConvConcatMaskEncoder, Decoder as BaseConvConcatMaskDecoder
 from .unet_conv_concat_masks import Encoder as UNetConvConcatMaskEncoder, Decoder as UNetConvConcatMaskDecoder
 from .unet_concat_mask import Encoder as UNetConcatMaskEncoder, Decoder as UNetConcatMaskDecoder
 from .unet_concat_mask_only import Encoder as UNetConcatMaskOnlyEncoder, Decoder as UNetConcatMaskOnlyDecoder
@@ -469,6 +470,16 @@ class BaseConvConcatMaskAutoencoder(Autoencoder):
 
         self.encoder = BaseConvConcatMaskEncoder(enc_in, enc_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
         self.decoder = BaseConvConcatMaskDecoder(enc_out, dec_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
+
+
+class BaseConvConcatMaskAdjustAutoencoder(Autoencoder):
+    def __init__(self, enc_in, enc_out=4, dec_out=1, n_dim=27, n_dim_mask=None, leaky_relu_alpha=0.3):
+        super().__init__()
+        self.enc_in = enc_in
+
+        self.encoder = BaseConvConcatMaskAdjustEncoder(enc_in, enc_out, n_dim, n_dim_mask, leaky_relu_alpha=leaky_relu_alpha)
+        self.decoder = BaseConvConcatMaskAdjustDecoder(enc_out, dec_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
+
 
 class UnetConvConcatMaskAutoencoder(Autoencoder):
     def __init__(self, enc_in=2, enc_out=4, dec_out=1, n_dim=27, leaky_relu_alpha=0.3):
