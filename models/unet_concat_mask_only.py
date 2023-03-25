@@ -81,7 +81,7 @@ class Decoder(nn.Module):
     def __init__(self, dec_in, dec_out, n_dim, leaky_relu_alpha=0.3):
         super(Decoder, self).__init__()
         
-        self.conv2d_transpose = nn.ConvTranspose2d(dec_in+1, dec_in, kernel_size=(3,3), stride=1, padding=1)
+        self.conv2d_transpose = nn.ConvTranspose2d(dec_in, dec_in, kernel_size=(3,3), stride=1, padding=1)
         self.conv2d_transpose_1 = nn.ConvTranspose2d(dec_in+1, n_dim, kernel_size=(3,3), stride=1, padding=1)
         self.conv2d_transpose_2 = nn.ConvTranspose2d(n_dim+1, n_dim, kernel_size=(3,3), stride=1, padding=1)
         self.conv2d_transpose_3 = nn.ConvTranspose2d(n_dim+1, n_dim, kernel_size=(3,3), stride=1, padding=1)
