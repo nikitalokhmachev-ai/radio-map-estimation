@@ -29,6 +29,8 @@ from .unet_conv_concat_masks import Encoder as UNetConvConcatMaskEncoder, Decode
 from .unet_concat_mask import Encoder as UNetConcatMaskEncoder, Decoder as UNetConcatMaskDecoder
 from .unet_concat_mask_only import Encoder as UNetConcatMaskOnlyEncoder, Decoder as UNetConcatMaskOnlyDecoder
 from .unet_concat_map_only import Encoder as UNetConcatMapOnlyEncoder, Decoder as UNetConcatMapOnlyDecoder
+from .unet_concat_mask_symmetric import Encoder as UNetConcatMaskSymmetricEncoder, Decoder as UNetConcatMaskSymmetricDecoder
+from .unet_concat_map_symmetric import Encoder as UNetConcatMapSymmetricEncoder, Decoder as UNetConcatMapSymmetricDecoder
 from .autoencoder import Autoencoder
 
 import torch
@@ -533,3 +535,17 @@ class BaseSplitConvConcatMasksAutoencoderLight(Autoencoder):
         self.decoder = BaseSplitConvConcatMaskDecoderLight(enc_out, dec_out, n_dim_dec, leaky_relu_alpha)
 
 
+class UNetConcatMaskSymmetricAutoencoder(UNetAutoencoder):
+    def __init__(self, enc_in=2, enc_out=4, dec_out=1, n_dim=27, leaky_relu_alpha=0.3):
+        super().__init__()
+
+        self.encoder = UNetConcatMaskSymmetricEncoder(enc_in, enc_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
+        self.decoder = UNetConcatMaskSymmetricDecoder(enc_out, dec_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
+
+
+class UNetConcatMapSymmetricAutoencoder(UNetAutoencoder):
+    def __init__(self, enc_in=2, enc_out=4, dec_out=1, n_dim=27, leaky_relu_alpha=0.3):
+        super().__init__()
+
+        self.encoder = UNetConcatMapSymmetricEncoder(enc_in, enc_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
+        self.decoder = UNetConcatMapSymmetricDecoder(enc_out, dec_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
