@@ -28,7 +28,7 @@ class Encoder(nn.Module):
         self.conv2d_7 = nn.Conv2d(n_dim + n_dim_mask + 1, n_dim, kernel_size=(3, 3), padding='same')
         self.conv2d_8 = nn.Conv2d(n_dim + n_dim_mask + 1, n_dim, kernel_size=(3, 3), padding='same')
         self.average_pooling2d_2 = nn.AvgPool2d(kernel_size=(2, 2))
-        self.mu = nn.Conv2d(n_dim + n_dim_mask, enc_out, kernel_size=(3, 3), padding='same')
+        self.mu = nn.Conv2d(n_dim + n_dim_mask + 1, enc_out, kernel_size=(3, 3), padding='same')
 
         if self.n_dim_mask > 0:
             self.mask_conv2d = nn.Conv2d(1, n_dim_mask, kernel_size=(3, 3), padding='same')

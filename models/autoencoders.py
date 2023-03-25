@@ -542,6 +542,11 @@ class UNetConcatMaskSymmetricAutoencoder(UNetAutoencoder):
         self.encoder = UNetConcatMaskSymmetricEncoder(enc_in, enc_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
         self.decoder = UNetConcatMaskSymmetricDecoder(enc_out, dec_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
 
+    def forward(self, x):
+        x, skip1, skip2, skip3, mask1, mask2, mask3 = self.encoder(x)
+        x = self.decoder(x, skip1, skip2, skip3, mask1, mask2, mask3)
+        return x
+
 
 class UNetConcatMapSymmetricAutoencoder(UNetAutoencoder):
     def __init__(self, enc_in=2, enc_out=4, dec_out=1, n_dim=27, leaky_relu_alpha=0.3):
@@ -549,3 +554,8 @@ class UNetConcatMapSymmetricAutoencoder(UNetAutoencoder):
 
         self.encoder = UNetConcatMapSymmetricEncoder(enc_in, enc_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
         self.decoder = UNetConcatMapSymmetricDecoder(enc_out, dec_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
+
+    def forward(self, x):
+        x, skip1, skip2, skip3, map1, map2, map3 = self.encoder(x)
+        x = self.decoder(x, skip1, skip2, skip3, map1, map2, map3)
+        return x
