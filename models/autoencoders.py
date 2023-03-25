@@ -2,6 +2,8 @@ from .base import Encoder as BaseEncoder, Decoder as BaseDecoder
 from .resnet import Encoder as ResnetEncoder, Decoder as ResnetDecoder
 from .unet import Encoder as UNetEncoder, Decoder as UNetDecoder
 from .res_unet import Encoder as ResUNetEncoder, Decoder as ResUNetDecoder
+from .res_unet_concat import Encoder as ResUNetConcatEncoder, Decoder as ResUNetConcatDecoder
+
 from .vae import Encoder as VariationalEncoder, Decoder as VariationalDecoder
 from .resnet_vae import Encoder as ResnetVariationalEncoder, Decoder as ResnetVariationalDecoder
 from .sparse_base import Encoder as SparseBaseEncoder, Decoder as SparseBaseDecoder
@@ -70,6 +72,14 @@ class ResUNetAutoencoder(UNetAutoencoder):
 
         self.encoder = ResUNetEncoder(enc_in, enc_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
         self.decoder = ResUNetDecoder(enc_out, dec_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
+
+
+class ResUNetConcatAutoencoder(UNetAutoencoder):
+    def __init__(self, enc_in=2, enc_out=4, dec_out=1, n_dim=27, leaky_relu_alpha=0.3):
+        super().__init__()
+
+        self.encoder = ResUNetConcatEncoder(enc_in, enc_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
+        self.decoder = ResUNetConcatDecoder(enc_out, dec_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
 
 
 class UNetAutoencoder_NoMask(UNetAutoencoder):
@@ -510,3 +520,5 @@ class BaseSplitConvConcatMasksAutoencoderLight(Autoencoder):
 
         self.encoder = BaseSplitConvConcatMaskEncoderLight(enc_in, enc_out, n_dim_map, n_dim_mask, leaky_relu_alpha)
         self.decoder = BaseSplitConvConcatMaskDecoderLight(enc_out, dec_out, n_dim_dec, leaky_relu_alpha)
+
+
