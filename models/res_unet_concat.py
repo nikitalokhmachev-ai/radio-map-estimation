@@ -40,19 +40,19 @@ class Encoder(nn.Module):
         x = self.leaky_relu(self.conv2d(x))
         res_skip = x
         x = self.leaky_relu(self.conv2d_1(x))
-        x = self.leaky_relu(self.conv2d_2(torch.cat([x, res_skip])))
+        x = self.leaky_relu(self.conv2d_2(torch.cat([x, res_skip], 1)))
         u_skip1 = x
         x = self.average_pooling2d(x)
         res_skip = x
         x = self.leaky_relu(self.conv2d_3(x))
         x = self.leaky_relu(self.conv2d_4(x))
-        x = self.leaky_relu(self.conv2d_5(torch.cat([x, res_skip])))
+        x = self.leaky_relu(self.conv2d_5(torch.cat([x, res_skip], 1)))
         u_skip2 = x
         x = self.average_pooling2d_1(x)
         res_skip = x
         x = self.leaky_relu(self.conv2d_6(x))
         x = self.leaky_relu(self.conv2d_7(x))
-        x = self.leaky_relu(self.conv2d_8(torch.cat([x, res_skip])))
+        x = self.leaky_relu(self.conv2d_8(torch.cat([x, res_skip], 1)))
         u_skip3 = x
         x = self.average_pooling2d_2(x)
         x = self.leaky_relu(self.mu(x))
@@ -99,18 +99,18 @@ class Decoder(nn.Module):
         x = self.leaky_relu(self.conv2d_transpose_1(x))
         res_skip = x
         x = self.leaky_relu(self.conv2d_transpose_2(x))
-        x = self.leaky_relu(self.conv2d_transpose_3(torch.cat([x, res_skip])))
+        x = self.leaky_relu(self.conv2d_transpose_3(torch.cat([x, res_skip], 1)))
         x = self.up_sampling2d_1(x)
         res_skip = x
         x = torch.cat((x, u_skip2), dim=1)
         x = self.leaky_relu(self.conv2d_transpose_4(x))
         x = self.leaky_relu(self.conv2d_transpose_5(x))
-        x = self.leaky_relu(self.conv2d_transpose_6(torch.cat([x, res_skip])))
+        x = self.leaky_relu(self.conv2d_transpose_6(torch.cat([x, res_skip], 1)))
         x = self.up_sampling2d_2(x)
         res_skip = x
         x = torch.cat((x, u_skip1), dim=1)
         x = self.leaky_relu(self.conv2d_transpose_7(x))
-        x = self.leaky_relu(self.conv2d_transpose_8(torch.cat([x, res_skip])))
+        x = self.leaky_relu(self.conv2d_transpose_8(torch.cat([x, res_skip], 1)))
         x = self.leaky_relu(self.conv2d_transpose_9(x))
         x = torch.flatten(x, start_dim=1)
         return x
