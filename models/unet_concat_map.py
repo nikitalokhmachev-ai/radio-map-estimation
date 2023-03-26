@@ -50,6 +50,7 @@ class Encoder(nn.Module):
 
         x = self.average_pooling2d(x)
         m = torch.nn.functional.interpolate(m, scale_factor = (0.5, 0.5))
+        map = torch.nn.functional.interpolate(map, scale_factor = (0.5, 0.5))
 
         x = torch.cat([x, m], 1)
         x = self.leaky_relu(self.conv2d_3(x))
@@ -61,6 +62,7 @@ class Encoder(nn.Module):
 
         x = self.average_pooling2d_1(x)
         m = torch.nn.functional.interpolate(m, scale_factor = (0.5, 0.5))
+        map = torch.nn.functional.interpolate(map, scale_factor = (0.5, 0.5))
 
         x = torch.cat([x, m], 1)
         x = self.leaky_relu(self.conv2d_6(x))
