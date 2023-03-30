@@ -32,6 +32,7 @@ from .unet_concat_mask_symmetric import Encoder as UNetConcatMaskSymmetricEncode
 from .unet_concat_map import Encoder as UNetConcatMapEncoder, Decoder as UNetConcatMapDecoder
 from .unet_concat_map_only import Encoder as UNetConcatMapOnlyEncoder, Decoder as UNetConcatMapOnlyDecoder
 from .unet_concat_map_symmetric import Encoder as UNetConcatMapSymmetricEncoder, Decoder as UNetConcatMapSymmetricDecoder
+from .unet_dual_encoder import Encoder as UNetDualEncoder
 from .autoencoder import Autoencoder
 
 import torch
@@ -568,3 +569,12 @@ class UNetConcatMapSymmetricAutoencoder(UNetAutoencoder):
         x, skip1, skip2, skip3, map1, map2, map3 = self.encoder(x)
         x = self.decoder(x, skip1, skip2, skip3, map1, map2, map3)
         return x
+    
+
+
+class UNetDualEncoderAutoencoder(UNetAutoencoder):
+    def __init__(self, enc_in=2, enc_out=4, dec_out=1, n_dim=27, leaky_relu_alpha=0.3):
+        super().__init__()
+
+        self.encoder = UNetDualEncoder(enc_in, enc_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
+        self.decoder = UNetDecoder(enc_out, dec_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
