@@ -520,7 +520,7 @@ class UNetConcatMaskMapAutoencoder(UNetAutoencoder):
         super().__init__()
 
         self.encoder = UNetConcatMaskMapEncoder(enc_in, enc_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
-        self.decoder = UNetConcatMaskMapDecoder(enc_in, enc_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
+        self.decoder = UNetConcatMaskMapDecoder(enc_out, dec_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
 
 
 class UNetConcatMapAutoencoder(UNetAutoencoder):
@@ -544,7 +544,7 @@ class UNetConcatMapMaskAutoencoder(UNetAutoencoder):
         super().__init__()
 
         self.encoder = UNetConcatMapMaskEncoder(enc_in, enc_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
-        self.decoder = UNetConcatMapMaskDecoder(enc_in, enc_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
+        self.decoder = UNetConcatMapMaskDecoder(enc_out, dec_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
 
 
 class BaseSplitConvConcatMasksAutoencoder(Autoencoder):
