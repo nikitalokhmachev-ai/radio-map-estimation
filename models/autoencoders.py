@@ -34,6 +34,7 @@ from .unet_concat_map import Encoder as UNetConcatMapEncoder, Decoder as UNetCon
 from .unet_concat_map_only import Encoder as UNetConcatMapOnlyEncoder, Decoder as UNetConcatMapOnlyDecoder
 from .unet_concat_map_mask import Encoder as UNetConcatMapMaskEncoder, Decoder as UNetConcatMapMaskDecoder
 from .unet_concat_map_symmetric import Encoder as UNetConcatMapSymmetricEncoder, Decoder as UNetConcatMapSymmetricDecoder
+from .unet_concat_input import Encoder as UNetConcatInputEncoder, Decoder as UNetConcatInputDecoder
 from .unet_dual_encoder import Encoder as UNetDualEncoder
 from .autoencoder import Autoencoder
 
@@ -595,3 +596,11 @@ class UNetDualEncoderAutoencoder(UNetAutoencoder):
 
         self.encoder = UNetDualEncoder(enc_in, enc_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
         self.decoder = UNetDecoder(enc_out, dec_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
+
+
+class UNetConcatInputAutoencoder(UNetAutoencoder):
+    def __init__(self, enc_in=2, enc_out=4, dec_out=1, n_dim=27, leaky_relu_alpha=0.3):
+        super().__init__()
+
+        self.encoder = UNetConcatInputEncoder(enc_in, enc_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
+        self.decoder = UNetConcatInputDecoder(enc_out, dec_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
