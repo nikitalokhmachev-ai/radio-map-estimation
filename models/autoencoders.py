@@ -508,14 +508,14 @@ class UNetConcatMaskAutoencoder(UNetAutoencoder):
         self.encoder = UNetConcatMaskEncoder(enc_in, enc_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
         self.decoder = UNetConcatMaskDecoder(enc_out, dec_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
 
-class UNetConcatMaskOnlyAutoencoder(UNetAutoencoder):
+class DualConcatMaskOnlyAutoencoder(UNetAutoencoder):
     def __init__(self, enc_in=2, enc_out=4, dec_out=1, n_dim=27, leaky_relu_alpha=0.3):
         super().__init__()
 
         self.encoder = DualConcatMaskOnlyEncoder(enc_in, enc_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
         self.decoder = DualConcatMaskOnlyDecoder(enc_out, dec_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
 
-class UNetConcatMaskMapAutoencoder(UNetAutoencoder):
+class DualConcatMaskMapAutoencoder(UNetAutoencoder):
     def __init__(self, enc_in=2, enc_out=4, dec_out=1, n_dim=27, leaky_relu_alpha=0.3):
         super().__init__()
 
@@ -531,7 +531,7 @@ class UNetConcatMapAutoencoder(UNetAutoencoder):
         self.decoder = UNetConcatMapDecoder(enc_out, dec_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
 
 
-class UNetConcatMapOnlyAutoencoder(UNetAutoencoder):
+class DualConcatMapOnlyAutoencoder(UNetAutoencoder):
     def __init__(self, enc_in=2, enc_out=4, dec_out=1, n_dim=27, leaky_relu_alpha=0.3):
         super().__init__()
 
@@ -539,7 +539,7 @@ class UNetConcatMapOnlyAutoencoder(UNetAutoencoder):
         self.decoder = DualConcatMapOnlyDecoder(enc_out, dec_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
 
 
-class UNetConcatMapMaskAutoencoder(UNetAutoencoder):
+class DualConcatMapMaskAutoencoder(UNetAutoencoder):
     def __init__(self, enc_in=2, enc_out=4, dec_out=1, n_dim=27, leaky_relu_alpha=0.3):
         super().__init__()
 
@@ -598,7 +598,7 @@ class UNetDualEncoderAutoencoder(UNetAutoencoder):
         self.decoder = UNetDecoder(enc_out, dec_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
 
 
-class UNetConcatInputAutoencoder(UNetAutoencoder):
+class DualConcatInputAutoencoder(UNetAutoencoder):
     def __init__(self, enc_in=2, enc_out=4, dec_out=1, n_dim=27, leaky_relu_alpha=0.3):
         super().__init__()
 
