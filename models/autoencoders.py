@@ -27,14 +27,14 @@ from .base_split_conv_concat_masks import Encoder as BaseSplitConvConcatMaskEnco
 from .base_split_conv_concat_masks_light import Encoder as BaseSplitConvConcatMaskEncoderLight, Decoder as BaseSplitConvConcatMaskDecoderLight
 from .unet_conv_concat_masks import Encoder as UNetConvConcatMaskEncoder, Decoder as UNetConvConcatMaskDecoder
 from .unet_concat_mask import Encoder as UNetConcatMaskEncoder, Decoder as UNetConcatMaskDecoder
-from .dual_concat_mask_only import Encoder as DualConcatMaskOnlyEncoder, Decoder as DualConcatMaskOnlyDecoder
-from .dual_concat_mask_map import Encoder as DualConcatMaskMapEncoder, Decoder as DualConcatMaskMapDecoder
+from .unet_concat_mask_only import Encoder as UNetConcatMaskOnlyEncoder, Decoder as UNetConcatMaskOnlyDecoder
+from .unet_concat_mask_map import Encoder as UNetConcatMaskMapEncoder, Decoder as UNetConcatMaskMapDecoder
 from .unet_concat_mask_symmetric import Encoder as UNetConcatMaskSymmetricEncoder, Decoder as UNetConcatMaskSymmetricDecoder
 from .unet_concat_map import Encoder as UNetConcatMapEncoder, Decoder as UNetConcatMapDecoder
-from .dual_concat_map_only import Encoder as DualConcatMapOnlyEncoder, Decoder as DualConcatMapOnlyDecoder
-from .dual_concat_map_mask import Encoder as DualConcatMapMaskEncoder, Decoder as DualConcatMapMaskDecoder
+from .unet_concat_map_only import Encoder as UNetConcatMapOnlyEncoder, Decoder as UNetConcatMapOnlyDecoder
+from .unet_concat_map_mask import Encoder as UNetConcatMapMaskEncoder, Decoder as UNetConcatMapMaskDecoder
 from .unet_concat_map_symmetric import Encoder as UNetConcatMapSymmetricEncoder, Decoder as UNetConcatMapSymmetricDecoder
-from .dual_concat_input import Encoder as DualConcatInputEncoder, Decoder as DualConcatInputDecoder
+from .unet_concat_input import Encoder as UNetConcatInputEncoder, Decoder as UNetConcatInputDecoder
 from .unet_dual_encoder import Encoder as UNetDualEncoder
 from .autoencoder import Autoencoder
 
@@ -508,19 +508,19 @@ class UNetConcatMaskAutoencoder(UNetAutoencoder):
         self.encoder = UNetConcatMaskEncoder(enc_in, enc_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
         self.decoder = UNetConcatMaskDecoder(enc_out, dec_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
 
-class DualConcatMaskOnlyAutoencoder(UNetAutoencoder):
+class UNetConcatMaskOnlyAutoencoder(UNetAutoencoder):
     def __init__(self, enc_in=2, enc_out=4, dec_out=1, n_dim=27, leaky_relu_alpha=0.3):
         super().__init__()
 
-        self.encoder = DualConcatMaskOnlyEncoder(enc_in, enc_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
-        self.decoder = DualConcatMaskOnlyDecoder(enc_out, dec_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
+        self.encoder = UNetConcatMaskOnlyEncoder(enc_in, enc_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
+        self.decoder = UNetConcatMaskOnlyDecoder(enc_out, dec_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
 
-class DualConcatMaskMapAutoencoder(UNetAutoencoder):
+class UNetConcatMaskMapAutoencoder(UNetAutoencoder):
     def __init__(self, enc_in=2, enc_out=4, dec_out=1, n_dim=27, leaky_relu_alpha=0.3):
         super().__init__()
 
-        self.encoder = DualConcatMaskMapEncoder(enc_in, enc_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
-        self.decoder = DualConcatMaskMapDecoder(enc_out, dec_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
+        self.encoder = UNetConcatMaskMapEncoder(enc_in, enc_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
+        self.decoder = UNetConcatMaskMapDecoder(enc_out, dec_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
 
 
 class UNetConcatMapAutoencoder(UNetAutoencoder):
@@ -531,20 +531,20 @@ class UNetConcatMapAutoencoder(UNetAutoencoder):
         self.decoder = UNetConcatMapDecoder(enc_out, dec_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
 
 
-class DualConcatMapOnlyAutoencoder(UNetAutoencoder):
+class UNetConcatMapOnlyAutoencoder(UNetAutoencoder):
     def __init__(self, enc_in=2, enc_out=4, dec_out=1, n_dim=27, leaky_relu_alpha=0.3):
         super().__init__()
 
-        self.encoder = DualConcatMapOnlyEncoder(enc_in, enc_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
-        self.decoder = DualConcatMapOnlyDecoder(enc_out, dec_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
+        self.encoder = UNetConcatMapOnlyEncoder(enc_in, enc_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
+        self.decoder = UNetConcatMapOnlyDecoder(enc_out, dec_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
 
 
-class DualConcatMapMaskAutoencoder(UNetAutoencoder):
+class UNetConcatMapMaskAutoencoder(UNetAutoencoder):
     def __init__(self, enc_in=2, enc_out=4, dec_out=1, n_dim=27, leaky_relu_alpha=0.3):
         super().__init__()
 
-        self.encoder = DualConcatMapMaskEncoder(enc_in, enc_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
-        self.decoder = DualConcatMapMaskDecoder(enc_out, dec_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
+        self.encoder = UNetConcatMapMaskEncoder(enc_in, enc_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
+        self.decoder = UNetConcatMapMaskDecoder(enc_out, dec_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
 
 
 class BaseSplitConvConcatMasksAutoencoder(Autoencoder):
@@ -598,9 +598,9 @@ class UNetDualEncoderAutoencoder(UNetAutoencoder):
         self.decoder = UNetDecoder(enc_out, dec_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
 
 
-class DualConcatInputAutoencoder(UNetAutoencoder):
+class UNetConcatInputAutoencoder(UNetAutoencoder):
     def __init__(self, enc_in=2, enc_out=4, dec_out=1, n_dim=27, leaky_relu_alpha=0.3):
         super().__init__()
 
-        self.encoder = DualConcatInputEncoder(enc_in, enc_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
-        self.decoder = DualConcatInputDecoder(enc_out, dec_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
+        self.encoder = UNetConcatInputEncoder(enc_in, enc_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
+        self.decoder = UNetConcatInputDecoder(enc_out, dec_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
