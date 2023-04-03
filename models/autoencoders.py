@@ -563,7 +563,7 @@ class BaseSplitConvConcatMasksAutoencoderLight(Autoencoder):
         self.decoder = BaseSplitConvConcatMaskDecoderLight(enc_out, dec_out, n_dim_dec, leaky_relu_alpha)
 
 
-class UNetConcatMaskOnly(UNetAutoencoder):
+class UNetConcatMaskOnlyAutoencoder(UNetAutoencoder):
     def __init__(self, enc_in=2, enc_out=4, dec_out=1, n_dim=27, leaky_relu_alpha=0.3):
         super().__init__()
 
