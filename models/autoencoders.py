@@ -25,16 +25,19 @@ from .base_conv_concat_masks_adjust import Encoder as BaseConvConcatMaskAdjustEn
 from .base_conv_masks import Encoder as BaseConvMaskEncoder, Decoder as BaseConvMaskDecoder
 from .base_split_conv_concat_masks import Encoder as BaseSplitConvConcatMaskEncoder, Decoder as BaseSplitConvConcatMaskDecoder
 from .base_split_conv_concat_masks_light import Encoder as BaseSplitConvConcatMaskEncoderLight, Decoder as BaseSplitConvConcatMaskDecoderLight
-from .unet_conv_concat_masks import Encoder as UNetConvConcatMaskEncoder, Decoder as UNetConvConcatMaskDecoder
-from .unet_concat_mask import Encoder as UNetConcatMaskEncoder, Decoder as UNetConcatMaskDecoder
 from .dual_concat_mask_only import Encoder as DualConcatMaskOnlyEncoder, Decoder as DualConcatMaskOnlyDecoder
 from .dual_concat_mask_map import Encoder as DualConcatMaskMapEncoder, Decoder as DualConcatMaskMapDecoder
-from .unet_concat_mask_only import Encoder as UNetConcatMaskOnlyEncoder, Decoder as UNetConcatMaskOnlyDecoder
-from .unet_concat_map import Encoder as UNetConcatMapEncoder, Decoder as UNetConcatMapDecoder
 from .dual_concat_map_only import Encoder as DualConcatMapOnlyEncoder, Decoder as DualConcatMapOnlyDecoder
 from .dual_concat_map_mask import Encoder as DualConcatMapMaskEncoder, Decoder as DualConcatMapMaskDecoder
-from .unet_concat_mask_map import Encoder as UNetConcatMaskMapEncoder, Decoder as UNetConcatMaskMapDecoder
 from .dual_concat_input import Encoder as DualConcatInputEncoder, Decoder as DualConcatInputDecoder
+from .unet_conv_concat_masks import Encoder as UNetConvConcatMaskEncoder, Decoder as UNetConvConcatMaskDecoder
+from .unet_concat_mask import Encoder as UNetConcatMaskEncoder, Decoder as UNetConcatMaskDecoder
+from .unet_concat_mask_only import Encoder as UNetConcatMaskOnlyEncoder, Decoder as UNetConcatMaskOnlyDecoder
+from .unet_concat_mask_map import Encoder as UNetConcatMaskMapEncoder, Decoder as UNetConcatMaskMapDecoder
+from .unet_concat_map import Encoder as UNetConcatMapEncoder, Decoder as UNetConcatMapDecoder
+from .unet_concat_map_only import Encoder as UNetConcatMapOnlyEncoder, Decoder as UNetConcatMapOnlyDecoder
+from .unet_concat_map_mask import Encoder as UNetConcatMapMaskEncoder, Decoder as UNetConcatMapMaskDecoder
+from .unet_concat_input import Encoder as UNetConcatInputEncoder, Decoder as UNetConcatInputDecoder
 from .unet_dual_encoder import Encoder as UNetDualEncoder
 from .autoencoder import Autoencoder
 
@@ -563,6 +566,32 @@ class BaseSplitConvConcatMasksAutoencoderLight(Autoencoder):
         self.decoder = BaseSplitConvConcatMaskDecoderLight(enc_out, dec_out, n_dim_dec, leaky_relu_alpha)
 
 
+class UNetConcatMapOnlyAutoencoder(UNetAutoencoder):
+    def __init__(self, enc_in=2, enc_out=4, dec_out=1, n_dim=27, leaky_relu_alpha=0.3):
+        super().__init__()
+
+        self.encoder = UNetConcatMapOnlyEncoder(enc_in, enc_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
+        self.decoder = UNetConcatMapOnlyDecoder(enc_out, dec_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
+
+    def forward(self, x):
+        x, skip1, skip2, skip3, map1, map2, map3 = self.encoder(x)
+        x = self.decoder(x, skip1, skip2, skip3, map1, map2, map3)
+        return x
+    
+
+class UNetConcatMapMaskAutoencoder(UNetAutoencoder):
+    def __init__(self, enc_in=2, enc_out=4, dec_out=1, n_dim=27, leaky_relu_alpha=0.3):
+        super().__init__()
+
+        self.encoder = UNetConcatMapMaskEncoder(enc_in, enc_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
+        self.decoder = UNetConcatMapMaskDecoder(enc_out, dec_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
+
+    def forward(self, x):
+        x, skip1, skip2, skip3, mask1, mask2, mask3 = self.encoder(x)
+        x = self.decoder(x, skip1, skip2, skip3, mask1, mask2, mask3)
+        return x
+
+
 class UNetConcatMaskOnlyAutoencoder(UNetAutoencoder):
     def __init__(self, enc_in=2, enc_out=4, dec_out=1, n_dim=27, leaky_relu_alpha=0.3):
         super().__init__()
@@ -586,6 +615,19 @@ class UNetConcatMaskMapAutoencoder(UNetAutoencoder):
     def forward(self, x):
         x, skip1, skip2, skip3, map1, map2, map3 = self.encoder(x)
         x = self.decoder(x, skip1, skip2, skip3, map1, map2, map3)
+        return x
+    
+
+class UNetConcatInputAutoencoder(UNetAutoencoder):
+    def __init__(self, enc_in=2, enc_out=4, dec_out=1, n_dim=27, leaky_relu_alpha=0.3):
+        super().__init__()
+
+        self.encoder = UNetConcatInputEncoder(enc_in, enc_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
+        self.decoder = UNetConcatInputDecoder(enc_out, dec_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
+
+    def forward(self, x):
+        x, skip1, skip2, skip3, input1, input2, input3 = self.encoder(x)
+        x = self.decoder(x, skip1, skip2, skip3, input1, input2, input3)
         return x
     
 

@@ -36,44 +36,47 @@ class Encoder(nn.Module):
                 torch.nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
 
     def forward(self, x_):
+        map_ = x_[:,0].unsqueeze(1)
         mask_ = x_[:,1].unsqueeze(1)
 
         x = self.leaky_relu(self.conv2d(x_))
-        x = torch.cat([x, mask_], 1)
+        x = torch.cat([x, map_], 1)
         x = self.leaky_relu(self.conv2d_1(x))
-        x = torch.cat([x, mask_], 1)
+        x = torch.cat([x, map_], 1)
         x = self.leaky_relu(self.conv2d_2(x))
         skip1 = x
         mask1 = mask_
 
         x = self.average_pooling2d(x)
         mask_ = torch.nn.functional.interpolate(mask_, scale_factor = (0.5, 0.5))
+        map_ = torch.nn.functional.interpolate(map_, scale_factor = (0.5, 0.5))
 
-        x = torch.cat([x, mask_], 1)
+        x = torch.cat([x, map_], 1)
         x = self.leaky_relu(self.conv2d_3(x))
-        x = torch.cat([x, mask_], 1)
+        x = torch.cat([x, map_], 1)
         x = self.leaky_relu(self.conv2d_4(x))
-        x = torch.cat([x, mask_], 1)
+        x = torch.cat([x, map_], 1)
         x = self.leaky_relu(self.conv2d_5(x))
         skip2 = x
         mask2 = mask_
 
         x = self.average_pooling2d_1(x)
         mask_ = torch.nn.functional.interpolate(mask_, scale_factor = (0.5, 0.5))
+        map_ = torch.nn.functional.interpolate(map_, scale_factor = (0.5, 0.5))
 
-        x = torch.cat([x, mask_], 1)
+        x = torch.cat([x, map_], 1)
         x = self.leaky_relu(self.conv2d_6(x))
-        x = torch.cat([x, mask_], 1)
+        x = torch.cat([x, map_], 1)
         x = self.leaky_relu(self.conv2d_7(x))
-        x = torch.cat([x, mask_], 1)
+        x = torch.cat([x, map_], 1)
         x = self.leaky_relu(self.conv2d_8(x))
         skip3 = x
         mask3 = mask_
 
         x = self.average_pooling2d_2(x)
-        mask_ = torch.nn.functional.interpolate(mask_, scale_factor = (0.5, 0.5))
+        map_ = torch.nn.functional.interpolate(map_, scale_factor = (0.5, 0.5))
 
-        x = torch.cat([x, mask_], 1)
+        x = torch.cat([x, map_], 1)
         x = self.leaky_relu(self.mu(x))
         return x, skip1, skip2, skip3, mask1, mask2, mask3
     
