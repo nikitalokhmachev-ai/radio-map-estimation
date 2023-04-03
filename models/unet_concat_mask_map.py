@@ -36,48 +36,49 @@ class Encoder(nn.Module):
                 torch.nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
 
     def forward(self, x_):
-        x = x_[:,0].unsqueeze(1)
-        m = x_[:,1].unsqueeze(1)
+        map_ = x_[:,0].unsqueeze(1)
+        mask_ = x_[:,1].unsqueeze(1)
 
-        x = torch.cat([x, m], 1)
-        x = self.leaky_relu(self.conv2d(x))
-        x = torch.cat([x, m], 1)
+        x = self.leaky_relu(self.conv2d(x_))
+        x = torch.cat([x, mask_], 1)
         x = self.leaky_relu(self.conv2d_1(x))
-        x = torch.cat([x, m], 1)
+        x = torch.cat([x, mask_], 1)
         x = self.leaky_relu(self.conv2d_2(x))
         skip1 = x
-        mask1 = m
+        map1 = map_
 
         x = self.average_pooling2d(x)
-        m = torch.nn.functional.interpolate(m, scale_factor = (0.5, 0.5))
+        mask_ = torch.nn.functional.interpolate(mask_, scale_factor = (0.5, 0.5))
+        map_ = torch.nn.functional.interpolate(map_, scale_factor = (0.5, 0.5))
 
-        x = torch.cat([x, m], 1)
+        x = torch.cat([x, mask_], 1)
         x = self.leaky_relu(self.conv2d_3(x))
-        x = torch.cat([x, m], 1)
+        x = torch.cat([x, mask_], 1)
         x = self.leaky_relu(self.conv2d_4(x))
-        x = torch.cat([x, m], 1)
+        x = torch.cat([x, mask_], 1)
         x = self.leaky_relu(self.conv2d_5(x))
         skip2 = x
-        mask2 = m
+        map2 = map_
 
         x = self.average_pooling2d_1(x)
-        m = torch.nn.functional.interpolate(m, scale_factor = (0.5, 0.5))
+        mask_ = torch.nn.functional.interpolate(mask_, scale_factor = (0.5, 0.5))
+        map_ = torch.nn.functional.interpolate(map_, scale_factor = (0.5, 0.5))
 
-        x = torch.cat([x, m], 1)
+        x = torch.cat([x, mask_], 1)
         x = self.leaky_relu(self.conv2d_6(x))
-        x = torch.cat([x, m], 1)
+        x = torch.cat([x, mask_], 1)
         x = self.leaky_relu(self.conv2d_7(x))
-        x = torch.cat([x, m], 1)
+        x = torch.cat([x, mask_], 1)
         x = self.leaky_relu(self.conv2d_8(x))
         skip3 = x
-        mask3 = m
+        map3 = map_
 
         x = self.average_pooling2d_2(x)
-        m = torch.nn.functional.interpolate(m, scale_factor = (0.5, 0.5))
+        mask_ = torch.nn.functional.interpolate(mask_, scale_factor = (0.5, 0.5))
 
-        x = torch.cat([x, m], 1)
+        x = torch.cat([x, mask_], 1)
         x = self.leaky_relu(self.mu(x))
-        return x, skip1, skip2, skip3, mask1, mask2, mask3
+        return x, skip1, skip2, skip3, map1, map2, map3
     
 
 class Decoder(nn.Module):
@@ -113,28 +114,28 @@ class Decoder(nn.Module):
             if isinstance(m, nn.ConvTranspose2d):
                 torch.nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
 
-    def forward(self, x, skip1, skip2, skip3, mask1, mask2, mask3):
+    def forward(self, x, skip1, skip2, skip3, map1, map2, map3):
         x = self.leaky_relu(self.conv2d_transpose(x))
         x = self.up_sampling2d(x)
-        x = torch.cat((x, skip3, mask3), dim=1)
+        x = torch.cat((x, skip3, map3), dim=1)
         x = self.leaky_relu(self.conv2d_transpose_1(x))
-        x = torch.cat((x, mask3), dim=1)
+        x = torch.cat((x, map3), dim=1)
         x = self.leaky_relu(self.conv2d_transpose_2(x))
-        x = torch.cat((x, mask3), dim=1)
+        x = torch.cat((x, map3), dim=1)
         x = self.leaky_relu(self.conv2d_transpose_3(x))
         x = self.up_sampling2d_1(x)
-        x = torch.cat((x, skip2, mask2), dim=1)
+        x = torch.cat((x, skip2, map2), dim=1)
         x = self.leaky_relu(self.conv2d_transpose_4(x))
-        x = torch.cat((x, mask2), dim=1)
+        x = torch.cat((x, map2), dim=1)
         x = self.leaky_relu(self.conv2d_transpose_5(x))
-        x = torch.cat((x, mask2), dim=1)
+        x = torch.cat((x, map2), dim=1)
         x = self.leaky_relu(self.conv2d_transpose_6(x))
         x = self.up_sampling2d_2(x)
-        x = torch.cat((x, skip1, mask1), dim=1)
+        x = torch.cat((x, skip1, map1), dim=1)
         x = self.leaky_relu(self.conv2d_transpose_7(x))
-        x = torch.cat((x, mask1), dim=1)
+        x = torch.cat((x, map1), dim=1)
         x = self.leaky_relu(self.conv2d_transpose_8(x))
-        x = torch.cat((x, mask1), dim=1)
+        x = torch.cat((x, map1), dim=1)
         x = self.leaky_relu(self.conv2d_transpose_9(x))
         x = torch.flatten(x, start_dim=1)
         return x
