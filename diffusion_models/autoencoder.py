@@ -1,43 +1,147 @@
-import torch
-import torchvision
-import torchvision.transforms as transforms
-import torch.nn.functional as F
-from torch import nn
-import numpy as np
-from torch.utils.data import Dataset
-from PIL import Image
+class DiffusionUNet(torch.nn.Module):
+    def __init__(
+        self,
+        sample_size = 32,
+        in_channels = 3,
+        out_channels = 1,
+        center_input_sample = False,
+        time_embedding_type = "positional",
+        freq_shift = 0,
+        flip_sin_to_cos = True,
+        down_block_types = ("DownBlock2D",
+                            "DownBlock2D",
+                            "DownBlock2D",
+                            "DownBlock2D",
+                            "AttnDownBlock2D",
+                            "DownBlock2D"),
+        up_block_types: = ("UpBlock2D",
+                            "AttnUpBlock2D",
+                            "UpBlock2D",
+                            "UpBlock2D",
+                            "UpBlock2D",
+                            "UpBlock2D"),
+        block_out_channels = (16, 16, 32, 32, 64, 64),
+        layers_per_block = 2,
+        mid_block_scale_factor = 1,
+        downsample_padding = 1,
+        act_fn = "silu",
+        attention_head_dim = 8,
+        norm_num_groups = 16,
+        norm_eps = 1e-5,
+        resnet_time_scale_shift = "default",
+        add_attention = True,
+        class_embed_type = None,
+        num_class_embeds = None,
+    ):
 
-device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+      super().__init__()
 
-class Autoencoder(torch.nn.Module):
-    def __init__(self):
-        super().__init__()
+      self.model = UNet2DModel(
+          sample_size = sample_size,
+          in_channels = in_channels,
+          out_channels = out_channels,
+          center_input_sample = center_input_sample,
+          time_embedding_type = time_embedding_type,
+          freq_shift = freq_shift,
+          flip_sin_to_cos = flip_sin_to_cos,
+          down_block_types = down_block_types,
+          up_block_types = up_block_types,
+          block_out_channels = block_out_channels,
+          layers_per_block = layers_per_block,
+          mid_block_scale_factor = mid_block_scale_factor,
+          downsample_padding = downsample_padding,
+          act_fn = act_fn,
+          attention_head_dim = attention_head_dim,
+          norm_num_groups = norm_num_groups,
+          norm_eps = norm_eps,
+          resnet_time_scale_shift = resnet_time_scale_shift,
+          add_attention = add_attention,
+          class_embed_type = class_embed_type,
+          num_class_embeds = num_class_embeds
+      )
 
-        self.encoder = None#Encoder(enc_in, enc_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
-        self.decoder = None#Decoder(enc_out, dec_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
+    def forward(self, x, t, return_dict=False):
+        return self.model(x, t, return_dict=return_dict)
 
-    def forward(self, x):
-        x = self.encoder(x)
-        x = self.decoder(x)
-        return x
-        
-    def fit(self, train_dl, optimizer, epochs=100, loss='mse'):
-        for epoch in range(epochs):
+    def fit(self, config, noise_scheduler, optimizer, train_dataloader, lr_scheduler):
+        model = self.model
+
+        # Initialize accelerator and tensorboard logging
+        accelerator = Accelerator(
+            mixed_precision=config.mixed_precision,
+            gradient_accumulation_steps=config.gradient_accumulation_steps, 
+            log_with="tensorboard",
+            logging_dir=os.path.join(config.output_dir, "logs")
+        )
+        if accelerator.is_main_process:
+            if config.push_to_hub:
+                repo_name = get_full_repo_name(Path(config.output_dir).name)
+                repo = Repository(config.output_dir, clone_from=repo_name)
+            elif config.output_dir is not None:
+                os.makedirs(config.output_dir, exist_ok=True)
+            accelerator.init_trackers("train_example")
+      
+      # Prepare everything
+      # There is no specific order to remember, you just need to unpack the 
+      # objects in the same order you gave them to the prepare method.
+        model, optimizer, train_dataloader, lr_scheduler = accelerator.prepare(
+            model, optimizer, train_dataloader, lr_scheduler
+      )
+      
+        global_step = 0
+
+        # Now you train the model
+        for epoch in range(config.num_epochs):
             running_loss = 0.0
-            for i, data in enumerate(train_dl):
-                optimizer.zero_grad()
-                t_x_point, t_y_point, t_y_mask, t_channel_pow, file_path, j = data
-                t_x_point, t_y_point, t_y_mask = t_x_point.to(torch.float32).to(device), t_y_point.flatten(1).to(device), t_y_mask.flatten(1).to(device)
-                t_channel_pow = t_channel_pow.flatten(1).to(device)
-                t_y_point_pred = self.forward(t_x_point).to(torch.float64)
-                loss_ = torch.nn.functional.mse_loss(t_y_point * t_y_mask, t_y_point_pred * t_y_mask).to(torch.float32)
-                if loss == 'rmse':
-                    loss_ = torch.sqrt(loss_)
-                loss_.backward()
-                optimizer.step()
+            for step, batch in enumerate(train_dl):
+            t_x_points, t_y_points, t_y_mask, t_channel_pows, filename, i = batch
+            clean_images = t_channel_pows.to(torch.float32).to(device) * 2 - 1
+            sample_maps = t_x_points[:,0].to(torch.float32).to(device).unsqueeze(1) * 2 - 1
+            environment_masks = t_x_points[:,1].to(torch.float32).to(device).unsqueeze(1)
 
-                running_loss += loss_.item()        
-                print(f'{loss_}, [{epoch + 1}, {i + 1:5d}] loss: {running_loss/(i+1)}')
+            # Sample noise to add to the images
+            noise = torch.randn(clean_images.shape).to(clean_images.device)
+            bs = clean_images.shape[0]
+
+            # Sample a random timestep for each image
+            timesteps = torch.randint(0, noise_scheduler.num_train_timesteps, (bs,), device=clean_images.device).long()
+
+            # Add noise to the clean images according to the noise magnitude at each timestep
+            # (this is the forward diffusion process)
+            noisy_images = noise_scheduler.add_noise(clean_images, noise, timesteps)
+
+            model_input = torch.cat((noisy_images, sample_maps, environment_masks), 1)
+            
+            with accelerator.accumulate(model):
+                # Predict the noise residual
+                noise_pred = model(model_input, timesteps, return_dict=False)[0]
+                loss = F.mse_loss(noise_pred, noise)
+                accelerator.backward(loss)
+
+                accelerator.clip_grad_norm_(model.parameters(), 1.0)
+                optimizer.step()
+                lr_scheduler.step()
+                optimizer.zero_grad()
+            
+            logs = {"loss": loss.detach().item(), "lr": lr_scheduler.get_last_lr()[0], "step": global_step}
+            accelerator.log(logs, step=global_step)
+            global_step += 1
+
+            running_loss += loss.detach().item()        
+            print(f'{loss}, [{epoch + 1}, {i + 1:5d}] loss: {running_loss/(i+1)}')
+
+            # After each epoch you optionally sample some demo images with evaluate() and save the model
+            if accelerator.is_main_process:
+                pipeline = DDPMPipeline(unet=accelerator.unwrap_model(model), scheduler=noise_scheduler)
+
+                if (epoch + 1) % config.save_image_epochs == 0 or epoch == config.num_epochs - 1:
+                    evaluate(config, epoch, model=accelerator.unwrap_model(model), scheduler=noise_scheduler, validation=val_data)
+
+                if (epoch + 1) % config.save_model_epochs == 0 or epoch == config.num_epochs - 1:
+                    if config.push_to_hub:
+                        repo.push_to_hub(commit_message=f"Epoch {epoch}", blocking=True)
+                    else:
+                        pipeline.save_pretrained(config.output_dir)
 
         return running_loss / (i+1)
 
