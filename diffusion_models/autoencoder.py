@@ -111,7 +111,7 @@ class DiffusionUNet(torch.nn.Module):
                 self.plot_samples(config, epoch, model=self.model, scheduler=noise_scheduler, data=batch[0:4])
         
             if (epoch + 1) % config.save_model_epochs == 0 or epoch == config.num_epochs - 1:
-                self.save_model(config.output_dir)
+                self.save_model(config, f'epoch_{epoch}.pth')
 
         return running_loss / (step+1)
 
@@ -204,5 +204,8 @@ class DiffusionUNet(torch.nn.Module):
             test_loss = self.evaluate(test_dl, scaler)
             wandb.log({'train_loss': train_loss, 'test_loss': test_loss})
 
-    def save_model(self, out_path):
-        torch.save(self, out_path)
+    def save_model(self, config, name):
+        if not os.path.exists(config.output_dir):
+            os.makedirs(config.output_dir)
+        filepath = os.path.join(config.output_dir, name)
+        torch.save(self, filepath)
