@@ -1,3 +1,8 @@
+import torch
+import os
+from diffusers import UNet2DModel
+from accelerate import Accelerator
+
 class DiffusionUNet(torch.nn.Module):
     def __init__(
         self,
@@ -14,12 +19,12 @@ class DiffusionUNet(torch.nn.Module):
                             "DownBlock2D",
                             "AttnDownBlock2D",
                             "DownBlock2D"),
-        up_block_types: = ("UpBlock2D",
-                            "AttnUpBlock2D",
-                            "UpBlock2D",
-                            "UpBlock2D",
-                            "UpBlock2D",
-                            "UpBlock2D"),
+        up_block_types = ("UpBlock2D",
+                          "AttnUpBlock2D",
+                          "UpBlock2D",
+                          "UpBlock2D",
+                          "UpBlock2D",
+                          "UpBlock2D"),
         block_out_channels = (16, 16, 32, 32, 64, 64),
         layers_per_block = 2,
         mid_block_scale_factor = 1,
@@ -29,9 +34,7 @@ class DiffusionUNet(torch.nn.Module):
         norm_num_groups = 16,
         norm_eps = 1e-5,
         resnet_time_scale_shift = "default",
-        add_attention = True,
-        class_embed_type = None,
-        num_class_embeds = None,
+        add_attention = True
     ):
 
       super().__init__()
@@ -55,9 +58,7 @@ class DiffusionUNet(torch.nn.Module):
           norm_num_groups = norm_num_groups,
           norm_eps = norm_eps,
           resnet_time_scale_shift = resnet_time_scale_shift,
-          add_attention = add_attention,
-          class_embed_type = class_embed_type,
-          num_class_embeds = num_class_embeds
+          add_attention = add_attention
       )
 
     def forward(self, x, t, return_dict=False):
@@ -93,44 +94,45 @@ class DiffusionUNet(torch.nn.Module):
         # Now you train the model
         for epoch in range(config.num_epochs):
             running_loss = 0.0
-            for step, batch in enumerate(train_dl):
-            t_x_points, t_y_points, t_y_mask, t_channel_pows, filename, i = batch
-            clean_images = t_channel_pows.to(torch.float32).to(device) * 2 - 1
-            sample_maps = t_x_points[:,0].to(torch.float32).to(device).unsqueeze(1) * 2 - 1
-            environment_masks = t_x_points[:,1].to(torch.float32).to(device).unsqueeze(1)
+            for step, batch in enumerate(train_dataloader):
+                t_x_points, t_y_points, t_y_mask, t_channel_pows, filename, i = batch
+                clean_images = t_channel_pows.to(torch.float32).to(device) * 2 - 1
+                sample_maps = t_x_points[:,0].to(torch.float32).to(device).unsqueeze(1) * 2 - 1
+                environment_masks = t_x_points[:,1].to(torch.float32).to(device).unsqueeze(1)
 
-            # Sample noise to add to the images
-            noise = torch.randn(clean_images.shape).to(clean_images.device)
-            bs = clean_images.shape[0]
+                # Sample noise to add to the images
+                noise = torch.randn(clean_images.shape).to(clean_images.device)
+                bs = clean_images.shape[0]
 
-            # Sample a random timestep for each image
-            timesteps = torch.randint(0, noise_scheduler.num_train_timesteps, (bs,), device=clean_images.device).long()
+                # Sample a random timestep for each image
+                timesteps = torch.randint(0, noise_scheduler.num_train_timesteps, (bs,), device=clean_images.device).long()
 
-            # Add noise to the clean images according to the noise magnitude at each timestep
-            # (this is the forward diffusion process)
-            noisy_images = noise_scheduler.add_noise(clean_images, noise, timesteps)
+                # Add noise to the clean images according to the noise magnitude at each timestep
+                # (this is the forward diffusion process)
+                noisy_images = noise_scheduler.add_noise(clean_images, noise, timesteps)
 
-            model_input = torch.cat((noisy_images, sample_maps, environment_masks), 1)
+                model_input = torch.cat((noisy_images, sample_maps, environment_masks), 1)
+                
+                with accelerator.accumulate(model):
+                    # Predict the noise residual
+                    noise_pred = model(model_input, timesteps, return_dict=False)[0]
+                    loss = F.mse_loss(noise_pred, noise)
+                    accelerator.backward(loss)
+
+                    accelerator.clip_grad_norm_(model.parameters(), 1.0)
+                    optimizer.step()
+                    lr_scheduler.step()
+                    optimizer.zero_grad()
             
-            with accelerator.accumulate(model):
-                # Predict the noise residual
-                noise_pred = model(model_input, timesteps, return_dict=False)[0]
-                loss = F.mse_loss(noise_pred, noise)
-                accelerator.backward(loss)
+                logs = {"loss": loss.detach().item(), "lr": lr_scheduler.get_last_lr()[0], "step": global_step}
+                accelerator.log(logs, step=global_step)
+                global_step += 1
 
-                accelerator.clip_grad_norm_(model.parameters(), 1.0)
-                optimizer.step()
-                lr_scheduler.step()
-                optimizer.zero_grad()
-            
-            logs = {"loss": loss.detach().item(), "lr": lr_scheduler.get_last_lr()[0], "step": global_step}
-            accelerator.log(logs, step=global_step)
-            global_step += 1
-
-            running_loss += loss.detach().item()        
-            print(f'{loss}, [{epoch + 1}, {i + 1:5d}] loss: {running_loss/(i+1)}')
+                running_loss += loss.detach().item()        
+                print(f'{loss}, [{epoch + 1}, {i + 1:5d}] loss: {running_loss/(i+1)}')
 
             # After each epoch you optionally sample some demo images with evaluate() and save the model
+            '''
             if accelerator.is_main_process:
                 pipeline = DDPMPipeline(unet=accelerator.unwrap_model(model), scheduler=noise_scheduler)
 
@@ -142,6 +144,10 @@ class DiffusionUNet(torch.nn.Module):
                         repo.push_to_hub(commit_message=f"Epoch {epoch}", blocking=True)
                     else:
                         pipeline.save_pretrained(config.output_dir)
+            '''
+            if accelerator.is_main_process:
+                if (epoch + 1) % config.save_model_epochs == 0 or epoch == config.num_epochs - 1:
+                    self.save_model(config.output_dir)
 
         return running_loss / (i+1)
 
