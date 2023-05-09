@@ -3,7 +3,6 @@ import os
 from diffusers import UNet2DModel
 import matplotlib.pyplot as plt
 import numpy as np 
-import wandb
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
 class DiffusionUNet(torch.nn.Module):
