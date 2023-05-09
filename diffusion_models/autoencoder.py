@@ -1,7 +1,8 @@
 import torch
 import os
 from diffusers import UNet2DModel
-from accelerate import Accelerator
+
+device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
 class DiffusionUNet(torch.nn.Module):
     def __init__(
@@ -65,37 +66,12 @@ class DiffusionUNet(torch.nn.Module):
         return self.model(x, t, return_dict=return_dict)
 
     def fit(self, config, noise_scheduler, optimizer, train_dataloader, lr_scheduler):
-        model = self.model
-
-        # Initialize accelerator and tensorboard logging
-        accelerator = Accelerator(
-            mixed_precision=config.mixed_precision,
-            gradient_accumulation_steps=config.gradient_accumulation_steps, 
-            log_with="tensorboard",
-            logging_dir=os.path.join(config.output_dir, "logs")
-        )
-        if accelerator.is_main_process:
-            if config.push_to_hub:
-                repo_name = get_full_repo_name(Path(config.output_dir).name)
-                repo = Repository(config.output_dir, clone_from=repo_name)
-            elif config.output_dir is not None:
-                os.makedirs(config.output_dir, exist_ok=True)
-            accelerator.init_trackers("train_example")
       
-      # Prepare everything
-      # There is no specific order to remember, you just need to unpack the 
-      # objects in the same order you gave them to the prepare method.
-        model, optimizer, train_dataloader, lr_scheduler = accelerator.prepare(
-            model, optimizer, train_dataloader, lr_scheduler
-      )
-      
-        global_step = 0
-
         # Now you train the model
         for epoch in range(config.num_epochs):
             running_loss = 0.0
             for step, batch in enumerate(train_dataloader):
-                t_x_points, t_y_points, t_y_mask, t_channel_pows, filename, i = batch
+                t_x_points, _, _, t_channel_pows, _, i = batch
                 clean_images = t_channel_pows.to(torch.float32).to(device) * 2 - 1
                 sample_maps = t_x_points[:,0].to(torch.float32).to(device).unsqueeze(1) * 2 - 1
                 environment_masks = t_x_points[:,1].to(torch.float32).to(device).unsqueeze(1)
@@ -113,41 +89,26 @@ class DiffusionUNet(torch.nn.Module):
 
                 model_input = torch.cat((noisy_images, sample_maps, environment_masks), 1)
                 
-                with accelerator.accumulate(model):
-                    # Predict the noise residual
-                    noise_pred = model(model_input, timesteps, return_dict=False)[0]
-                    loss = F.mse_loss(noise_pred, noise)
-                    accelerator.backward(loss)
+                # Predict the noise residual
+                noise_pred = self.model(model_input, timesteps, return_dict=False)[0]
+                loss = F.mse_loss(noise_pred, noise)
+                loss.backward()
 
-                    accelerator.clip_grad_norm_(model.parameters(), 1.0)
-                    optimizer.step()
-                    lr_scheduler.step()
-                    optimizer.zero_grad()
-            
-                logs = {"loss": loss.detach().item(), "lr": lr_scheduler.get_last_lr()[0], "step": global_step}
-                accelerator.log(logs, step=global_step)
-                global_step += 1
+                torch.nn.utils.clip_grad_norm_(self.model.parameters(), 1.0)
+                optimizer.step()
+                lr_scheduler.step()
+                optimizer.zero_grad()
 
                 running_loss += loss.detach().item()        
                 print(f'{loss}, [{epoch + 1}, {i + 1:5d}] loss: {running_loss/(i+1)}')
 
             # After each epoch you optionally sample some demo images with evaluate() and save the model
-            '''
-            if accelerator.is_main_process:
-                pipeline = DDPMPipeline(unet=accelerator.unwrap_model(model), scheduler=noise_scheduler)
 
-                if (epoch + 1) % config.save_image_epochs == 0 or epoch == config.num_epochs - 1:
-                    evaluate(config, epoch, model=accelerator.unwrap_model(model), scheduler=noise_scheduler, validation=val_data)
-
-                if (epoch + 1) % config.save_model_epochs == 0 or epoch == config.num_epochs - 1:
-                    if config.push_to_hub:
-                        repo.push_to_hub(commit_message=f"Epoch {epoch}", blocking=True)
-                    else:
-                        pipeline.save_pretrained(config.output_dir)
-            '''
-            if accelerator.is_main_process:
-                if (epoch + 1) % config.save_model_epochs == 0 or epoch == config.num_epochs - 1:
-                    self.save_model(config.output_dir)
+            if (epoch + 1) % config.save_image_epochs == 0 or epoch == config.num_epochs - 1:
+                self.evaluate(config, epoch, model=self.model, scheduler=noise_scheduler, validation=val_data)
+        
+            if (epoch + 1) % config.save_model_epochs == 0 or epoch == config.num_epochs - 1:
+                self.save_model(config.output_dir)
 
         return running_loss / (i+1)
 
