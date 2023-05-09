@@ -107,7 +107,7 @@ class DiffusionUNet(torch.nn.Module):
             # After each epoch you optionally sample some demo images with evaluate() and save the model
 
             if (epoch + 1) % config.save_image_epochs == 0 or epoch == config.num_epochs - 1:
-                self.plot_samples(config, epoch, model=self.model, scheduler=noise_scheduler, data=batch[0:4])
+                self.plot_samples(config, epoch, noise_scheduler, data=batch[0:4], num_samples=3, fig_size=(15,5))
         
             if (epoch + 1) % config.save_model_epochs == 0 or epoch == config.num_epochs - 1:
                 self.save_model(config, f'epoch_{epoch}.pth')
