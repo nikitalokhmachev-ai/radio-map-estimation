@@ -60,7 +60,7 @@ class DiffusionUNet(torch.nn.Module):
           norm_eps = norm_eps,
           resnet_time_scale_shift = resnet_time_scale_shift,
           add_attention = add_attention
-      )
+      ).to(device)
 
     def forward(self, x, t, return_dict=False):
         return self.model(x, t, return_dict=return_dict)
