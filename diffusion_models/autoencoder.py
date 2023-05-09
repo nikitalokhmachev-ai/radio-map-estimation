@@ -99,18 +99,19 @@ class DiffusionUNet(torch.nn.Module):
                 lr_scheduler.step()
                 optimizer.zero_grad()
 
-                running_loss += loss.detach().item()        
-                print(f'{loss}, [{epoch + 1}, {i + 1:5d}] loss: {running_loss/(i+1)}')
+                running_loss += loss.detach().item()
+                print(f'{loss}, [{epoch + 1}, {step + 1:5d}] loss: {running_loss/(step+1)}')
+            
 
             # After each epoch you optionally sample some demo images with evaluate() and save the model
 
             if (epoch + 1) % config.save_image_epochs == 0 or epoch == config.num_epochs - 1:
-                self.evaluate(config, epoch, model=self.model, scheduler=noise_scheduler, validation=val_data)
+                self.plot_samples(config, epoch, model=self.model, scheduler=noise_scheduler, data=batch[0:4])
         
             if (epoch + 1) % config.save_model_epochs == 0 or epoch == config.num_epochs - 1:
                 self.save_model(config.output_dir)
 
-        return running_loss / (i+1)
+        return running_loss / (step+1)
 
 
     def evaluate(self, test_dl, scaler):
