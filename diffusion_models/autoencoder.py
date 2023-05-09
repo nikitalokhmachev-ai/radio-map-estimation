@@ -91,7 +91,7 @@ class DiffusionUNet(torch.nn.Module):
                 
                 # Predict the noise residual
                 noise_pred = self.model(model_input, timesteps, return_dict=False)[0]
-                loss = F.mse_loss(noise_pred, noise)
+                loss = torch.nn.functional.mse_loss(noise_pred, noise)
                 loss.backward()
 
                 torch.nn.utils.clip_grad_norm_(self.model.parameters(), 1.0)
