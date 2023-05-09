@@ -115,14 +115,17 @@ class DiffusionUNet(torch.nn.Module):
         return running_loss / (step+1)
 
 
-    def evaluate(self, test_dl, scaler, noise_scheduler):
+    def evaluate(self, test_dl, scaler, noise_scheduler, fixed_noise=False):
         losses = []
+        if fixed_noise:
+            noise = torch.randn(t_channel_pows.shape).to(device)
         for step, batch in enumerate(test_dl):
             t_x_points, _, _, t_channel_pows, _, _ = batch
             sample_maps = t_x_points[:,0].to(torch.float32).to(device).unsqueeze(1) * 2 - 1
             environment_masks = t_x_points[:,1].to(torch.float32).to(device).unsqueeze(1)
             # Sample noise to add to the images
-            noise = torch.randn(t_channel_pows.shape).to(device)
+            if not fixed_noise:
+                noise = torch.randn(t_channel_pows.shape).to(device)
 
             inputs = torch.cat((noise, sample_maps, environment_masks), 1).to(device)
             for t in noise_scheduler.timesteps:
