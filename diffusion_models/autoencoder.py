@@ -1,7 +1,9 @@
 import torch
 import os
 from diffusers import UNet2DModel
-
+import matplotlib.pyplot as plt
+import numpy as np 
+import wandb
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
 class DiffusionUNet(torch.nn.Module):
@@ -114,21 +116,85 @@ class DiffusionUNet(torch.nn.Module):
         return running_loss / (step+1)
 
 
-    def evaluate(self, test_dl, scaler):
+    def evaluate(self, test_dl, scaler, noise_scheduler):
         losses = []
-        with torch.no_grad():
-            for i, data in enumerate(test_dl):
-                    t_x_point, t_y_point, t_y_mask, t_channel_pow, file_path, j = data
-                    t_x_point, t_y_point, t_y_mask = t_x_point.to(torch.float32).to(device), t_y_point.flatten(1).to(device), t_y_mask.flatten(1).to(device)
-                    t_channel_pow = t_channel_pow.flatten(1).to(device).detach().cpu().numpy()
-                    t_y_point_pred = self.forward(t_x_point).detach().cpu().numpy()
-                    building_mask = (t_x_point[:,1,:,:].flatten(1) == -1).to(torch.float64).detach().cpu().numpy()
-                    loss = (np.linalg.norm((1 - building_mask) * (scaler.reverse_transform(t_channel_pow) - scaler.reverse_transform(t_y_point_pred)), axis=1) ** 2 / np.sum(building_mask == 0, axis=1)).tolist()
-                    losses += loss
-            
-                    print(f'{np.sqrt(np.mean(loss))}')
-                    
-            return torch.sqrt(torch.Tensor(losses).mean())
+        for step, batch in enumerate(test_dl):
+            t_x_points, _, _, t_channel_pows, _, _ = batch
+            sample_maps = t_x_points[:,0].to(torch.float32).to(device).unsqueeze(1) * 2 - 1
+            environment_masks = t_x_points[:,1].to(torch.float32).to(device).unsqueeze(1)
+            # Sample noise to add to the images
+            noise = torch.randn(t_channel_pows.shape).to(device)
+
+            inputs = torch.cat((noise, sample_maps, environment_masks), 1).to(device)
+            for t in noise_scheduler.timesteps:
+                with torch.no_grad():
+                    noisy_residual = self.model(inputs, t).sample
+                    previous_noisy_sample = noise_scheduler.step(noisy_residual, t, inputs[:,0].unsqueeze(1)).prev_sample
+                    inputs = torch.cat((previous_noisy_sample, sample_maps, environment_masks), 1)
+            t_y_point_preds = (inputs.clamp(-1,1)[:,0].detach().cpu().unsqueeze(1).flatten(1).numpy() + 1) / 2
+            building_mask = (t_x_points[:,1,:,:].flatten(1) == -1).to(torch.float64).detach().cpu().numpy()
+            t_channel_pows = t_channel_pows.flatten(1).to(device).detach().cpu().numpy()
+            loss = (np.linalg.norm((1 - building_mask) * (scaler.reverse_transform(t_channel_pows) - scaler.reverse_transform(t_y_point_preds)), axis=1) ** 2 / np.sum(building_mask == 0, axis=1)).tolist()
+            losses += loss
+            print(f'{step} {np.sqrt(np.mean(loss))}')
+        final_loss = torch.sqrt(torch.Tensor(losses).mean())
+
+        return final_loss
+    
+
+    def plot_samples(self, config, epoch, noise_scheduler, data, num_samples=3, fig_size=(15,5)):
+        # Sample some images from random noise (this is the backward diffusion process).
+        # The default pipeline output type is `List[PIL.Image]`
+        
+        rows = data[0].shape[0]
+        cols = 3 + num_samples
+        grid = np.empty((rows, cols, config.image_size, config.image_size))
+
+        t_x_points, t_y_points, t_y_masks, t_channel_pows, filename, index = data
+        complete_maps = t_channel_pows.to(torch.float32).to(device) * 2 - 1
+        sample_maps = t_x_points[:,0].to(torch.float32).to(device).unsqueeze(1) * 2 - 1
+        environment_masks = t_x_points[:,1].to(torch.float32).to(device).unsqueeze(1)
+        
+        for i in range(rows):
+            grid[i,0] = sample_maps[i,0].detach().cpu().numpy()
+            grid[i,1] = environment_masks[i,0].detach().cpu().numpy()
+            grid[i,2] = complete_maps[i,0].detach().cpu().numpy()
+
+        for n in range(num_samples):
+            noise = torch.randn(complete_maps.shape).to(device)
+            input = torch.cat((noise, sample_maps, environment_masks), 1)
+            for t in noise_scheduler.timesteps:
+                with torch.no_grad():
+                    noisy_residual = self.model(input, t).sample
+                    previous_noisy_sample = noise_scheduler.step(noisy_residual, t, input[:,0].unsqueeze(1)).prev_sample
+                    input = torch.cat((previous_noisy_sample, sample_maps, environment_masks), 1)
+        images = input.clamp(-1,1).detach().cpu().numpy()
+
+        for i in range(rows):
+            grid[i,n+3] = images[i,0]
+
+        # Make a grid out of the images
+        col_titles = ['Sample Map', 'Environment Mask', 'Complete Map', 'Generated Maps']
+
+        fig, axs = plt.subplots(rows, cols, figsize=fig_size)
+
+        for c in range(4):
+            axs[0, c].set_title(col_titles[c])
+
+            for i in range(rows):
+                for j in range(cols):
+                    if j == 1:
+                        axs[i,j].matshow(grid[i,j], cmap='binary', vmin=-1, vmax=1)
+                        axs[i,j].axis('off')
+                    else:
+                        axs[i,j].matshow(grid[i,j], cmap='hot', vmin=-1, vmax=1)
+                        axs[i,j].axis('off')
+        fig.tight_layout()
+
+        # Save the images
+        test_dir = os.path.join(config.output_dir, "samples")
+        os.makedirs(test_dir, exist_ok=True)
+        plt.savefig(f"{test_dir}/{epoch:04d}.png")
         
     def fit_wandb(self, train_dl, test_dl, scaler, optimizer, project_name, run_name, epochs=100, loss='mse'):
         import wandb
