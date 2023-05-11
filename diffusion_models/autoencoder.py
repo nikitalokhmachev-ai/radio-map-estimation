@@ -140,6 +140,7 @@ class DiffusionUNet(torch.nn.Module):
                 if (epoch + 1) % config.save_model_epochs == 0 or epoch == config.num_epochs - 1:
                     self.save_model(config, f'epoch_{epoch}.pth')
 
+                running_loss = 0.0
                 for step, batch in enumerate(test_dataloader):
                     loss = self.step(batch, noise_scheduler, optimizer, lr_scheduler, train=False)
                     running_loss += loss.detach().item()
