@@ -170,10 +170,10 @@ class DiffusionUNet(torch.nn.Module):
                     noisy_residual = self.model(input, t).sample
                     previous_noisy_sample = noise_scheduler.step(noisy_residual, t, input[:,0].unsqueeze(1)).prev_sample
                     input = torch.cat((previous_noisy_sample, sample_maps, environment_masks), 1)
-        images = input.clamp(-1,1).detach().cpu().numpy()
+            images = input.clamp(-1,1).detach().cpu().numpy()
 
-        for i in range(rows):
-            grid[i,n+3] = images[i,0]
+            for i in range(rows):
+                grid[i,n+3] = images[i,0]
 
         # Make a grid out of the images
         col_titles = ['Sample Map', 'Environment Mask', 'Complete Map', 'Generated Maps']
