@@ -207,11 +207,13 @@ class DiffusionUNet(torch.nn.Module):
                                   optimizer=optimizer, 
                                   train_dataloader=train_dataloader, 
                                   lr_scheduler=lr_scheduler)
-            test_loss = self.evaluate(test_dl=test_dl, 
-                                      scaler=scaler, 
-                                      noise_scheduler=noise_scheduler, 
-                                      fixed_noise=fixed_noise)
-            wandb.log({'train_loss': train_loss, 'test_loss': test_loss})
+            wandb.log({'train_loss': train_loss})
+
+        test_loss = self.evaluate(test_dl=test_dl, 
+                            scaler=scaler, 
+                            noise_scheduler=noise_scheduler, 
+                            fixed_noise=fixed_noise)
+        wandb.log({'test_loss': test_loss})
 
     def save_model(self, config, name):
         if not os.path.exists(config.output_dir):
