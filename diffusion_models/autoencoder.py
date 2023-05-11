@@ -107,7 +107,7 @@ class DiffusionUNet(torch.nn.Module):
             # After each epoch you optionally sample some demo images with evaluate() and save the model
 
             if (epoch + 1) % config.save_image_epochs == 0 or epoch == config.num_epochs - 1:
-                self.plot_samples(config, epoch, noise_scheduler, data=batch[0:4], num_samples=3, fig_size=(15,5))
+                self.plot_samples(config, epoch, noise_scheduler, data = list(map(lambda x: x[0:4], batch)), num_samples=3, fig_size=(15,5))
         
             if (epoch + 1) % config.save_model_epochs == 0 or epoch == config.num_epochs - 1:
                 self.save_model(config, f'epoch_{epoch}.pth')
@@ -198,12 +198,19 @@ class DiffusionUNet(torch.nn.Module):
         os.makedirs(test_dir, exist_ok=True)
         plt.savefig(f"{test_dir}/{epoch:04d}.png")
         
-    def fit_wandb(self, train_dl, test_dl, scaler, optimizer, project_name, run_name, epochs=100, loss='mse'):
+    def fit_wandb(self, project_name, run_name, config, noise_scheduler, optimizer, train_dataloader, lr_scheduler, test_dl, scaler, fixed_noise=False):
         import wandb
         wandb.init(project=project_name, name=run_name)
-        for epoch in range(epochs):
-            train_loss = self.fit(train_dl, optimizer, epochs=1, loss=loss)
-            test_loss = self.evaluate(test_dl, scaler)
+        for epoch in range(config.num_epochs):
+            train_loss = self.fit(config=config, 
+                                  noise_scheduler=noise_scheduler, 
+                                  optimizer=optimizer, 
+                                  train_dataloader=train_dataloader, 
+                                  lr_scheduler=lr_scheduler)
+            test_loss = self.evaluate(test_dl=test_dl, 
+                                      scaler=scaler, 
+                                      noise_scheduler=noise_scheduler, 
+                                      fixed_noise=fixed_noise)
             wandb.log({'train_loss': train_loss, 'test_loss': test_loss})
 
     def save_model(self, config, name):
