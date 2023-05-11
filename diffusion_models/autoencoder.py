@@ -66,33 +66,31 @@ class DiffusionUNet(torch.nn.Module):
     def forward(self, x, t, return_dict=False):
         return self.model(x, t, return_dict=return_dict)
 
-    def fit(self, config, noise_scheduler, optimizer, train_dataloader, lr_scheduler):
-      
-        # Now you train the model
-        for epoch in range(config.num_epochs):
-            running_loss = 0.0
-            for step, batch in enumerate(train_dataloader):
-                t_x_points, _, _, t_channel_pows, _, i = batch
-                clean_images = t_channel_pows.to(torch.float32).to(device) * 2 - 1
-                sample_maps = t_x_points[:,0].to(torch.float32).to(device).unsqueeze(1) * 2 - 1
-                environment_masks = t_x_points[:,1].to(torch.float32).to(device).unsqueeze(1)
 
-                # Sample noise to add to the images
-                noise = torch.randn(clean_images.shape).to(clean_images.device)
-                bs = clean_images.shape[0]
+    def step(self, batch, noise_scheduler, optimizer=None, lr_scheduler=None, train=True):
+        with torch.set_grad_enabled(train):
+            t_x_points, _, _, t_channel_pows, _, i = batch
+            clean_images = t_channel_pows.to(torch.float32).to(device) * 2 - 1
+            sample_maps = t_x_points[:,0].to(torch.float32).to(device).unsqueeze(1) * 2 - 1
+            environment_masks = t_x_points[:,1].to(torch.float32).to(device).unsqueeze(1)
 
-                # Sample a random timestep for each image
-                timesteps = torch.randint(0, noise_scheduler.num_train_timesteps, (bs,), device=clean_images.device).long()
+            # Sample noise to add to the images
+            noise = torch.randn(clean_images.shape).to(clean_images.device)
+            bs = clean_images.shape[0]
 
-                # Add noise to the clean images according to the noise magnitude at each timestep
-                # (this is the forward diffusion process)
-                noisy_images = noise_scheduler.add_noise(clean_images, noise, timesteps)
+            # Sample a random timestep for each image
+            timesteps = torch.randint(0, noise_scheduler.num_train_timesteps, (bs,), device=clean_images.device).long()
 
-                model_input = torch.cat((noisy_images, sample_maps, environment_masks), 1)
-                
-                # Predict the noise residual
-                noise_pred = self.model(model_input, timesteps, return_dict=False)[0]
-                loss = torch.nn.functional.mse_loss(noise_pred, noise)
+            # Add noise to the clean images according to the noise magnitude at each timestep
+            # (this is the forward diffusion process)
+            noisy_images = noise_scheduler.add_noise(clean_images, noise, timesteps)
+
+            model_input = torch.cat((noisy_images, sample_maps, environment_masks), 1)
+            
+            # Predict the noise residual
+            noise_pred = self.model(model_input, timesteps, return_dict=False)[0]
+            loss = torch.nn.functional.mse_loss(noise_pred, noise)
+            if train:
                 loss.backward()
 
                 torch.nn.utils.clip_grad_norm_(self.model.parameters(), 1.0)
@@ -100,10 +98,18 @@ class DiffusionUNet(torch.nn.Module):
                 lr_scheduler.step()
                 optimizer.zero_grad()
 
+        return loss
+
+    def fit(self, config, noise_scheduler, optimizer, train_dataloader, lr_scheduler):
+      
+        # Now you train the model
+        for epoch in range(config.num_epochs):
+            running_loss = 0.0
+            for step, batch in enumerate(train_dataloader):
+                loss = self.step(batch, noise_scheduler, optimizer, lr_scheduler)
                 running_loss += loss.detach().item()
                 print(f'{loss}, [{epoch + 1}, {step + 1:5d}] loss: {running_loss/(step+1)}')
             
-
             # After each epoch you optionally sample some demo images with evaluate() and save the model
 
             if (epoch + 1) % config.save_image_epochs == 0 or epoch == config.num_epochs - 1:
@@ -113,6 +119,34 @@ class DiffusionUNet(torch.nn.Module):
                 self.save_model(config, f'epoch_{epoch}.pth')
 
         return running_loss / (step+1)
+
+    def fit_wandb(self, project_name, run_name, config, noise_scheduler, optimizer, train_dataloader, lr_scheduler, test_dataloader):
+            import wandb
+            wandb.init(project=project_name, name=run_name)
+
+            for epoch in range(config.num_epochs):
+                running_loss = 0.0
+                for step, batch in enumerate(train_dataloader):
+                    loss = self.step(batch, noise_scheduler, optimizer, lr_scheduler, train=True)
+                    running_loss += loss.detach().item()
+                    train_loss = running_loss / (step+1)
+                    print(f'{loss}, [{epoch + 1}, {step + 1:5d}] train loss: {train_loss}')
+                
+                wandb.log({'train_loss': train_loss})
+
+                if (epoch + 1) % config.save_image_epochs == 0 or epoch == config.num_epochs - 1:
+                    self.plot_samples(config, epoch, noise_scheduler, data = list(map(lambda x: x[0:4], batch)), num_samples=3, fig_size=(15,5))
+            
+                if (epoch + 1) % config.save_model_epochs == 0 or epoch == config.num_epochs - 1:
+                    self.save_model(config, f'epoch_{epoch}.pth')
+
+            for step, batch in enumerate(test_dataloader):
+                loss = self.step(batch, noise_scheduler, optimizer, lr_scheduler, train=False)
+                running_loss += loss.detach().item()
+                test_loss = running_loss / (step+1)
+                print(f'{loss}, [{step + 1:5d}] test loss: {test_loss}')
+            
+            wandb.log({'test_loss': test_loss})
 
 
     def evaluate(self, test_dl, scaler, noise_scheduler, fixed_noise=None):
@@ -197,23 +231,6 @@ class DiffusionUNet(torch.nn.Module):
         test_dir = os.path.join(config.output_dir, "samples")
         os.makedirs(test_dir, exist_ok=True)
         plt.savefig(f"{test_dir}/{epoch:04d}.png")
-        
-    def fit_wandb(self, project_name, run_name, config, noise_scheduler, optimizer, train_dataloader, lr_scheduler, test_dl, scaler, fixed_noise=False):
-        import wandb
-        wandb.init(project=project_name, name=run_name)
-        for epoch in range(config.num_epochs):
-            train_loss = self.fit(config=config, 
-                                  noise_scheduler=noise_scheduler, 
-                                  optimizer=optimizer, 
-                                  train_dataloader=train_dataloader, 
-                                  lr_scheduler=lr_scheduler)
-            wandb.log({'train_loss': train_loss})
-
-        test_loss = self.evaluate(test_dl=test_dl, 
-                            scaler=scaler, 
-                            noise_scheduler=noise_scheduler, 
-                            fixed_noise=fixed_noise)
-        wandb.log({'test_loss': test_loss})
 
     def save_model(self, config, name):
         if not os.path.exists(config.output_dir):
