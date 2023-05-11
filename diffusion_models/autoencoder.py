@@ -140,13 +140,13 @@ class DiffusionUNet(torch.nn.Module):
                 if (epoch + 1) % config.save_model_epochs == 0 or epoch == config.num_epochs - 1:
                     self.save_model(config, f'epoch_{epoch}.pth')
 
-            for step, batch in enumerate(test_dataloader):
-                loss = self.step(batch, noise_scheduler, optimizer, lr_scheduler, train=False)
-                running_loss += loss.detach().item()
-                test_loss = running_loss / (step+1)
-                print(f'{loss}, [{step + 1:5d}] test loss: {test_loss}')
-            
-            wandb.log({'test_loss': test_loss})
+                for step, batch in enumerate(test_dataloader):
+                    loss = self.step(batch, noise_scheduler, optimizer, lr_scheduler, train=False)
+                    running_loss += loss.detach().item()
+                    test_loss = running_loss / (step+1)
+                    print(f'{loss}, [{step + 1:5d}] test loss: {test_loss}')
+                
+                wandb.log({'test_loss': test_loss})
 
 
     def evaluate(self, test_dl, scaler, noise_scheduler, fixed_noise=None):
