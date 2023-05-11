@@ -88,7 +88,7 @@ class DiffusionUNet(torch.nn.Module):
             model_input = torch.cat((noisy_images, sample_maps, environment_masks), 1)
             
             # Predict the noise residual
-            noise_pred = self.model(model_input, timesteps, return_dict=False)[0]
+            noise_pred = self.model(model_input, timesteps, return_dict=False)[0][:,0:1]
             loss = torch.nn.functional.mse_loss(noise_pred, noise)
             if train:
                 loss.backward()
@@ -165,7 +165,7 @@ class DiffusionUNet(torch.nn.Module):
             inputs = torch.cat((noise, sample_maps, environment_masks), 1).to(device)
             for t in noise_scheduler.timesteps:
                 with torch.no_grad():
-                    noisy_residual = self.model(inputs, t).sample
+                    noisy_residual = self.model(inputs, t).sample[:,0:1]
                     previous_noisy_sample = noise_scheduler.step(noisy_residual, t, inputs[:,0].unsqueeze(1)).prev_sample
                     inputs = torch.cat((previous_noisy_sample, sample_maps, environment_masks), 1)
             t_y_point_preds = (inputs.clamp(-1,1)[:,0].detach().cpu().unsqueeze(1).flatten(1).numpy() + 1) / 2
@@ -202,7 +202,7 @@ class DiffusionUNet(torch.nn.Module):
             input = torch.cat((noise, sample_maps, environment_masks), 1)
             for t in noise_scheduler.timesteps:
                 with torch.no_grad():
-                    noisy_residual = self.model(input, t).sample
+                    noisy_residual = self.model(input, t).sample[:,0:1]
                     previous_noisy_sample = noise_scheduler.step(noisy_residual, t, input[:,0].unsqueeze(1)).prev_sample
                     input = torch.cat((previous_noisy_sample, sample_maps, environment_masks), 1)
             images = input.clamp(-1,1).detach().cpu().numpy()
