@@ -1,13 +1,28 @@
 import torch
 import os
 from diffusers import UNet2DModel
+from diffusers.utils import BaseOutput
 import matplotlib.pyplot as plt
 import numpy as np 
+from dataclasses import dataclass
+
+from typing import Optional, Tuple, Union
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+
+@dataclass
+class UNet2DOutput(BaseOutput):
+    """
+    Args:
+        sample (`torch.FloatTensor` of shape `(batch_size, num_channels, height, width)`):
+            Hidden states output. Output of last layer of model.
+    """
+
+    sample: torch.FloatTensor
 
 class DiffusionUNet(torch.nn.Module):
     def __init__(
         self,
+        noise = None,
         sample_size = 32,
         in_channels = 3,
         out_channels = 1,
@@ -36,7 +51,7 @@ class DiffusionUNet(torch.nn.Module):
         norm_num_groups = 16,
         norm_eps = 1e-5,
         resnet_time_scale_shift = "default",
-        add_attention = True
+        add_attention = True, 
     ):
 
       super().__init__()
@@ -63,8 +78,105 @@ class DiffusionUNet(torch.nn.Module):
           add_attention = add_attention
       ).to(device)
 
-    def forward(self, x, t, return_dict=False):
-        return self.model(x, t, return_dict=return_dict)
+      self.noise = noise
+
+    def forward(
+        self,
+        sample: torch.FloatTensor,
+        timestep: Union[torch.Tensor, float, int],
+        class_labels: Optional[torch.Tensor] = None,
+        return_dict: bool = True,
+    ) -> Union[UNet2DOutput, Tuple]:
+        r"""
+        Args:
+            sample (`torch.FloatTensor`): (batch, channel, height, width) noisy inputs tensor
+            timestep (`torch.FloatTensor` or `float` or `int): (batch) timesteps
+            class_labels (`torch.FloatTensor`, *optional*, defaults to `None`):
+                Optional class labels for conditioning. Their embeddings will be summed with the timestep embeddings.
+            return_dict (`bool`, *optional*, defaults to `True`):
+                Whether or not to return a [`~models.unet_2d.UNet2DOutput`] instead of a plain tuple.
+        Returns:
+            [`~models.unet_2d.UNet2DOutput`] or `tuple`: [`~models.unet_2d.UNet2DOutput`] if `return_dict` is True,
+            otherwise a `tuple`. When returning a tuple, the first element is the sample tensor.
+        """
+        # 0. center input if necessary
+        if self.config.center_input_sample:
+            sample = 2 * sample - 1.0
+
+        # 1. time
+        timesteps = timestep
+        if not torch.is_tensor(timesteps):
+            timesteps = torch.tensor([timesteps], dtype=torch.long, device=sample.device)
+        elif torch.is_tensor(timesteps) and len(timesteps.shape) == 0:
+            timesteps = timesteps[None].to(sample.device)
+
+        # broadcast to batch dimension in a way that's compatible with ONNX/Core ML
+        timesteps = timesteps * torch.ones(sample.shape[0], dtype=timesteps.dtype, device=timesteps.device)
+
+        t_emb = self.time_proj(timesteps)
+
+        # timesteps does not contain any weights and will always return f32 tensors
+        # but time_embedding might actually be running in fp16. so we need to cast here.
+        # there might be better ways to encapsulate this.
+        t_emb = t_emb.to(dtype=self.dtype)
+        emb = self.time_embedding(t_emb)
+
+        if self.class_embedding is not None:
+            if class_labels is None:
+                raise ValueError("class_labels should be provided when doing class conditioning")
+
+            if self.config.class_embed_type == "timestep":
+                class_labels = self.time_proj(class_labels)
+
+            class_emb = self.class_embedding(class_labels).to(dtype=self.dtype)
+            emb = emb + class_emb
+
+        # 2. pre-process
+        skip_sample = sample
+        sample = self.conv_in(sample)
+
+        # 3. down
+        down_block_res_samples = (sample,)
+        for downsample_block in self.down_blocks:
+            if hasattr(downsample_block, "skip_conv"):
+                sample, res_samples, skip_sample = downsample_block(
+                    hidden_states=sample, temb=emb, skip_sample=skip_sample
+                )
+            else:
+                sample, res_samples = downsample_block(hidden_states=sample, temb=emb)
+
+            down_block_res_samples += res_samples
+
+        # 4. mid
+        sample = self.mid_block(sample, emb)
+
+        # 5. up
+        skip_sample = None
+        for upsample_block in self.up_blocks:
+            res_samples = down_block_res_samples[-len(upsample_block.resnets) :]
+            down_block_res_samples = down_block_res_samples[: -len(upsample_block.resnets)]
+
+            if hasattr(upsample_block, "skip_conv"):
+                sample, skip_sample = upsample_block(sample, res_samples, emb, skip_sample)
+            else:
+                sample = upsample_block(sample, res_samples, emb)
+
+        # 6. post-process
+        sample = self.conv_norm_out(sample)
+        sample = self.conv_act(sample)
+        sample = self.conv_out(sample)
+
+        if skip_sample is not None:
+            sample += skip_sample
+
+        if self.config.time_embedding_type == "fourier":
+            timesteps = timesteps.reshape((sample.shape[0], *([1] * len(sample.shape[1:]))))
+            sample = sample / timesteps
+
+        if not return_dict:
+            return (sample,)
+
+        return UNet2DOutput(sample=sample)
 
 
     def step(self, batch, noise_scheduler, optimizer=None, lr_scheduler=None, train=True):
@@ -75,7 +187,11 @@ class DiffusionUNet(torch.nn.Module):
             environment_masks = t_x_points[:,1].to(torch.float32).to(device).unsqueeze(1)
 
             # Sample noise to add to the images
-            noise = torch.randn(clean_images.shape).to(clean_images.device)
+            if self.noise:
+                noise = self.noise
+            else:
+                noise = torch.randn(clean_images.shape).to(clean_images.device)
+                
             bs = clean_images.shape[0]
 
             # Sample a random timestep for each image
@@ -101,7 +217,6 @@ class DiffusionUNet(torch.nn.Module):
         return loss
 
     def fit(self, config, noise_scheduler, optimizer, train_dataloader, lr_scheduler):
-      
         # Now you train the model
         for epoch in range(config.num_epochs):
             running_loss = 0.0
@@ -150,16 +265,16 @@ class DiffusionUNet(torch.nn.Module):
                 wandb.log({'test_loss': test_loss})
 
 
-    def evaluate(self, test_dl, scaler, noise_scheduler, fixed_noise=None):
+    def evaluate(self, test_dl, scaler, noise_scheduler):
         losses = []
-        if fixed_noise:
-            noise = fixed_noise.to(device)
         for step, batch in enumerate(test_dl):
             t_x_points, _, _, t_channel_pows, _, _ = batch
             sample_maps = t_x_points[:,0].to(torch.float32).to(device).unsqueeze(1) * 2 - 1
             environment_masks = t_x_points[:,1].to(torch.float32).to(device).unsqueeze(1)
             # Sample noise to add to the images
-            if not fixed_noise:
+            if self.noise:
+                noise = self.noise
+            else:
                 noise = torch.randn(t_channel_pows.shape).to(device)
 
             inputs = torch.cat((noise, sample_maps, environment_masks), 1).to(device)
