@@ -101,7 +101,7 @@ class TLPDiffusionUNet(torch.nn.Module):
             otherwise a `tuple`. When returning a tuple, the first element is the sample tensor.
         """
         # 0. center input if necessary
-        if self.config.center_input_sample:
+        if self.model.config.center_input_sample:
             sample = 2 * sample - 1.0
 
         # 1. time
@@ -126,7 +126,7 @@ class TLPDiffusionUNet(torch.nn.Module):
             if class_labels is None:
                 raise ValueError("class_labels should be provided when doing class conditioning")
 
-            if self.config.class_embed_type == "timestep":
+            if self.model.config.class_embed_type == "timestep":
                 class_labels = self.time_proj(class_labels)
 
             class_emb = self.class_embedding(class_labels).to(dtype=self.dtype)
@@ -171,7 +171,7 @@ class TLPDiffusionUNet(torch.nn.Module):
         if skip_sample is not None:
             sample += skip_sample
 
-        if self.config.time_embedding_type == "fourier":
+        if self.model.config.time_embedding_type == "fourier":
             timesteps = timesteps.reshape((sample.shape[0], *([1] * len(sample.shape[1:]))))
             sample = sample / timesteps
 
