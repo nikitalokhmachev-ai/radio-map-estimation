@@ -120,7 +120,7 @@ class TLPDiffusionUNet(torch.nn.Module):
         # but time_embedding might actually be running in fp16. so we need to cast here.
         # there might be better ways to encapsulate this.
         t_emb = t_emb.to(dtype=self.model.dtype)
-        emb = self.time_embedding(t_emb)
+        emb = self.model.time_embedding(t_emb)
 
         if self.model.class_embedding is not None:
             if class_labels is None:
