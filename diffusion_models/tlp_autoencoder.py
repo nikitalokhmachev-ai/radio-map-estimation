@@ -122,16 +122,6 @@ class TLPDiffusionUNet(torch.nn.Module):
         t_emb = t_emb.to(dtype=self.model.dtype)
         emb = self.model.time_embedding(t_emb)
 
-        if self.model.class_embedding is not None:
-            if class_labels is None:
-                raise ValueError("class_labels should be provided when doing class conditioning")
-
-            if self.model.config.class_embed_type == "timestep":
-                class_labels = self.model.time_proj(class_labels)
-
-            class_emb = self.model.class_embedding(class_labels).to(dtype=self.model.dtype)
-            emb = emb + class_emb
-
         # 2. pre-process
         skip_sample = sample
         sample = self.model.conv_in(sample)
