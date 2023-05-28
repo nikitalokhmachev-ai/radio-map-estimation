@@ -114,7 +114,7 @@ class TLPDiffusionUNet(torch.nn.Module):
         # broadcast to batch dimension in a way that's compatible with ONNX/Core ML
         timesteps = timesteps * torch.ones(sample.shape[0], dtype=timesteps.dtype, device=timesteps.device)
 
-        t_emb = self.time_proj(timesteps)
+        t_emb = self.model.time_proj(timesteps)
 
         # timesteps does not contain any weights and will always return f32 tensors
         # but time_embedding might actually be running in fp16. so we need to cast here.
@@ -122,23 +122,23 @@ class TLPDiffusionUNet(torch.nn.Module):
         t_emb = t_emb.to(dtype=self.dtype)
         emb = self.time_embedding(t_emb)
 
-        if self.class_embedding is not None:
+        if self.model.class_embedding is not None:
             if class_labels is None:
                 raise ValueError("class_labels should be provided when doing class conditioning")
 
             if self.model.config.class_embed_type == "timestep":
-                class_labels = self.time_proj(class_labels)
+                class_labels = self.model.time_proj(class_labels)
 
-            class_emb = self.class_embedding(class_labels).to(dtype=self.dtype)
+            class_emb = self.model.class_embedding(class_labels).to(dtype=self.dtype)
             emb = emb + class_emb
 
         # 2. pre-process
         skip_sample = sample
-        sample = self.conv_in(sample)
+        sample = self.model.conv_in(sample)
 
         # 3. down
         down_block_res_samples = (sample,)
-        for downsample_block in self.down_blocks:
+        for downsample_block in self.model.down_blocks:
             if hasattr(downsample_block, "skip_conv"):
                 sample, res_samples, skip_sample = downsample_block(
                     hidden_states=sample, temb=emb, skip_sample=skip_sample
@@ -149,11 +149,11 @@ class TLPDiffusionUNet(torch.nn.Module):
             down_block_res_samples += res_samples
 
         # 4. mid
-        sample = self.mid_block(sample, emb)
+        sample = self.model.mid_block(sample, emb)
 
         # 5. up
         skip_sample = None
-        for upsample_block in self.up_blocks:
+        for upsample_block in self.model.up_blocks:
             res_samples = down_block_res_samples[-len(upsample_block.resnets) :]
             down_block_res_samples = down_block_res_samples[: -len(upsample_block.resnets)]
 
@@ -164,9 +164,9 @@ class TLPDiffusionUNet(torch.nn.Module):
 
         features = sample.copy()
         # 6. post-process
-        sample = self.conv_norm_out(sample)
-        sample = self.conv_act(sample)
-        sample = self.conv_out(sample)
+        sample = self.model.conv_norm_out(sample)
+        sample = self.model.conv_act(sample)
+        sample = self.model.conv_out(sample)
 
         if skip_sample is not None:
             sample += skip_sample
