@@ -119,7 +119,7 @@ class TLPDiffusionUNet(torch.nn.Module):
         # timesteps does not contain any weights and will always return f32 tensors
         # but time_embedding might actually be running in fp16. so we need to cast here.
         # there might be better ways to encapsulate this.
-        t_emb = t_emb.to(dtype=self.dtype)
+        t_emb = t_emb.to(dtype=self.model.dtype)
         emb = self.time_embedding(t_emb)
 
         if self.model.class_embedding is not None:
@@ -129,7 +129,7 @@ class TLPDiffusionUNet(torch.nn.Module):
             if self.model.config.class_embed_type == "timestep":
                 class_labels = self.model.time_proj(class_labels)
 
-            class_emb = self.model.class_embedding(class_labels).to(dtype=self.dtype)
+            class_emb = self.model.class_embedding(class_labels).to(dtype=self.model.dtype)
             emb = emb + class_emb
 
         # 2. pre-process
