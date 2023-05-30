@@ -123,8 +123,8 @@ class RadioMapDataset(Dataset):
         tx_name = int(map_name.split('_')[1][:-4])
 
         # Open complete map, building mask, and tx loc files. 
-        complete_map = read_image(self.map_paths[idx])[0]
-        building_mask = read_image(building_path)[0]
+        complete_map = read_image(self.map_paths[idx])
+        building_mask = read_image(building_path)
         with open(tx_path) as f:
             tx_file = json.load(f)
         x_loc, y_loc = tx_file[tx_name]
@@ -132,17 +132,21 @@ class RadioMapDataset(Dataset):
         # Scale map and mask from 0 - 255 to 0 - 1. Scale tx_file by size of image.
         complete_map = complete_map / 255
         building_mask = building_mask / 255
-        x_loc = x_loc / complete_map.shape[1]
-        y_loc = y_loc / complete_map.shape[0]
+        x_loc = x_loc / complete_map.shape[2]
+        y_loc = y_loc / complete_map.shape[1]
         tx_loc = torch.tensor([x_loc, y_loc])
 
         # Sample map for model input
         sampled_map, environment_mask = sample_map(sampling_factor=0.1, map_to_sample=complete_map, building_mask=building_mask)
 
+        # Concatenate sampled_map and environment_mask, invert building_mask
+        sampled_map = torch.cat((sampled_map, environment_mask))
+        building_mask = 1-building_mask
+
         # from MapDataset class, corresponds to:
         # return t_x_points, t_y_points, t_y_mask, t_channel_pows, filename, i
         # `complete_map` is returned twice for compatibility with previous class. `i` is replaced wtih tx_loc
-        return sampled_map, complete_map, environment_mask, complete_map[0],  map_path, tx_loc
+        return sampled_map, complete_map, environment_mask, complete_map,  map_path, tx_loc
     
 
 def sample_map(sampling_factor, map_to_sample, building_mask):
