@@ -52,6 +52,7 @@ class TLPDiffusionUNet(torch.nn.Module):
         norm_eps = 1e-5,
         resnet_time_scale_shift = "default",
         add_attention = True, 
+        xy_features = 8,
     ):
 
       super().__init__()
@@ -79,6 +80,9 @@ class TLPDiffusionUNet(torch.nn.Module):
       ).to(device)
 
       self.noise = noise
+
+      self.xy_linear_1 = torch.nn.Linear(block_out_channels[-1], xy_features)
+      self.xy_linear_2 = torch.nn.Linear(xy_features, 2)
 
     def forward(
         self,
@@ -140,7 +144,8 @@ class TLPDiffusionUNet(torch.nn.Module):
 
         # 4. mid
         sample = self.model.mid_block(sample, emb)
-        features = sample
+        features = torch.nn.functional.silu(self.xy_linear_1(sample.mean((2,3))))
+        xy = torch.nn.functional.sigmoid(self.xy_linear_2(features))
         # 5. up
         skip_sample = None
         for upsample_block in self.model.up_blocks:
@@ -166,14 +171,14 @@ class TLPDiffusionUNet(torch.nn.Module):
             sample = sample / timesteps
 
         if not return_dict:
-            return (sample, features)
+            return (sample, xy)
 
-        return UNet2DOutput(sample=sample), features
+        return UNet2DOutput(sample=sample), xy
 
 
-    def step(self, batch, noise_scheduler, optimizer=None, lr_scheduler=None, train=True):
+    def step(self, batch, noise_scheduler, w_rec, w_loc, optimizer=None, lr_scheduler=None, train=True):
         with torch.set_grad_enabled(train):
-            t_x_points, _, _, t_channel_pows, _, i = batch
+            t_x_points, _, _, t_channel_pows, _, tx_loc = batch
             clean_images = t_channel_pows.to(torch.float32).to(device) * 2 - 1
             sample_maps = t_x_points[:,0].to(torch.float32).to(device).unsqueeze(1) * 2 - 1
             environment_masks = t_x_points[:,1].to(torch.float32).to(device).unsqueeze(1)
@@ -196,8 +201,10 @@ class TLPDiffusionUNet(torch.nn.Module):
             model_input = torch.cat((noisy_images, sample_maps, environment_masks), 1)
             
             # Predict the noise residual
-            noise_pred = self.model(model_input, timesteps, return_dict=False)[0][:,0:1]
-            loss = torch.nn.functional.mse_loss(noise_pred, noise)
+            noise_pred, xy = self.model(model_input, timesteps, return_dict=False)[0][:,0:1]
+            reconstruction_loss = torch.nn.functional.mse_loss(noise_pred, noise)
+            location_loss = torch.nn.functional.mse_loss(xy, tx_loc)
+            loss = w_rec * reconstruction_loss + w_loc * location_loss
             if train:
                 loss.backward()
 
@@ -206,16 +213,18 @@ class TLPDiffusionUNet(torch.nn.Module):
                 lr_scheduler.step()
                 optimizer.zero_grad()
 
-        return loss
+        return loss, reconstruction_loss, location_loss
 
-    def fit(self, config, noise_scheduler, optimizer, train_dataloader, lr_scheduler):
+    def fit(self, config, noise_scheduler, optimizer, train_dataloader, lr_scheduler, w_rec=0.5, w_loc=0.5):
         # Now you train the model
         for epoch in range(config.num_epochs):
-            running_loss = 0.0
+            running_loss, running_reconstruction_loss, running_location_loss = 0.0, 0.0, 0.0
             for step, batch in enumerate(train_dataloader):
-                loss = self.step(batch, noise_scheduler, optimizer, lr_scheduler)
+                loss, reconstruction_loss, location_loss = self.step(batch, noise_scheduler, w_rec, w_loc, optimizer, lr_scheduler)
                 running_loss += loss.detach().item()
-                print(f'{loss}, [{epoch + 1}, {step + 1:5d}] loss: {running_loss/(step+1)}')
+                running_reconstruction_loss += reconstruction_loss.detach().item()
+                running_location_loss += location_loss.detach().item()
+                print(f'{loss}, [{epoch + 1}, {step + 1:5d}] loss: {running_loss/(step+1)}, reconstruction_loss: {running_reconstruction_loss/(step+1)}, location_loss: {running_location_loss/(step+1)}')
             
             # After each epoch you optionally sample some demo images with evaluate() and save the model
 
@@ -227,19 +236,23 @@ class TLPDiffusionUNet(torch.nn.Module):
 
         return running_loss / (step+1)
 
-    def fit_wandb(self, project_name, run_name, config, noise_scheduler, optimizer, train_dataloader, lr_scheduler, test_dataloader):
+    def fit_wandb(self, project_name, run_name, config, noise_scheduler, optimizer, train_dataloader, lr_scheduler, test_dataloader, w_rec=0.5, w_loc=0.5):
             import wandb
             wandb.init(project=project_name, name=run_name)
 
             for epoch in range(config.num_epochs):
-                running_loss = 0.0
+                running_loss, running_reconstruction_loss, running_location_loss = 0.0, 0.0, 0.0
                 for step, batch in enumerate(train_dataloader):
-                    loss = self.step(batch, noise_scheduler, optimizer, lr_scheduler, train=True)
+                    loss, reconstruction_loss, location_loss = self.step(batch, noise_scheduler, w_rec, w_loc, optimizer, lr_scheduler)
                     running_loss += loss.detach().item()
-                    train_loss = running_loss / (step+1)
-                    print(f'{loss}, [{epoch + 1}, {step + 1:5d}] train loss: {train_loss}')
+                    running_reconstruction_loss += reconstruction_loss.detach().item()
+                    running_location_loss += location_loss.detach().item()
+                    train_loss = running_loss/(step+1)
+                    train_rec_loss = running_reconstruction_loss/(step+1)
+                    train_loc_loss = running_location_loss/(step+1)
+                    print(f'{loss}, [{epoch + 1}, {step + 1:5d}] loss: {train_loss}, reconstruction_loss: {train_rec_loss}, location_loss: {train_loc_loss}')
                 
-                wandb.log({'train_loss': train_loss})
+                wandb.log({'train_loss': train_loss, 'train_reconstruction_loss': train_rec_loss, 'train_location_loss':train_loc_loss})
 
                 if (epoch + 1) % config.save_image_epochs == 0 or epoch == config.num_epochs - 1:
                     self.plot_samples(config, epoch, noise_scheduler, data = list(map(lambda x: x[0:4], batch)), num_samples=3, fig_size=(15,5))
@@ -247,14 +260,18 @@ class TLPDiffusionUNet(torch.nn.Module):
                 if (epoch + 1) % config.save_model_epochs == 0 or epoch == config.num_epochs - 1:
                     self.save_model(config, f'epoch_{epoch}.pth')
 
-                running_loss = 0.0
+                running_loss, running_reconstruction_loss, running_location_loss = 0.0, 0.0, 0.0
                 for step, batch in enumerate(test_dataloader):
-                    loss = self.step(batch, noise_scheduler, optimizer, lr_scheduler, train=False)
+                    loss, reconstruction_loss, location_loss = self.step(batch, noise_scheduler, w_rec, w_loc, optimizer, lr_scheduler, train=False)
                     running_loss += loss.detach().item()
-                    test_loss = running_loss / (step+1)
-                    print(f'{loss}, [{step + 1:5d}] test loss: {test_loss}')
+                    running_reconstruction_loss += reconstruction_loss.detach().item()
+                    running_location_loss += location_loss.detach().item()
+                    test_loss = running_loss/(step+1)
+                    test_rec_loss = running_reconstruction_loss/(step+1)
+                    test_loc_loss = running_location_loss/(step+1)
+                    print(f'{loss}, [{epoch + 1}, {step + 1:5d}] loss: {test_loss}, reconstruction_loss: {test_rec_loss}, location_loss: {test_loc_loss}')
                 
-                wandb.log({'test_loss': test_loss})
+                wandb.log({'test_loss': test_loss, 'test_reconstruction_loss': test_rec_loss, 'test_location_loss':test_loc_loss})
 
 
     def evaluate(self, test_dl, scaler, noise_scheduler):
@@ -272,7 +289,7 @@ class TLPDiffusionUNet(torch.nn.Module):
             inputs = torch.cat((noise, sample_maps, environment_masks), 1).to(device)
             for t in noise_scheduler.timesteps:
                 with torch.no_grad():
-                    noisy_residual = self.model(inputs, t).sample[:,0:1]
+                    noisy_residual, _ = self.model(inputs, t).sample[:,0:1]
                     previous_noisy_sample = noise_scheduler.step(noisy_residual, t, inputs[:,0].unsqueeze(1)).prev_sample
                     inputs = torch.cat((previous_noisy_sample, sample_maps, environment_masks), 1)
             t_y_point_preds = (inputs.clamp(-1,1)[:,0].detach().cpu().unsqueeze(1).flatten(1).numpy() + 1) / 2
@@ -309,7 +326,7 @@ class TLPDiffusionUNet(torch.nn.Module):
             input = torch.cat((noise, sample_maps, environment_masks), 1)
             for t in noise_scheduler.timesteps:
                 with torch.no_grad():
-                    noisy_residual = self.model(input, t).sample[:,0:1]
+                    noisy_residual, _ = self.model(input, t).sample[:,0:1]
                     previous_noisy_sample = noise_scheduler.step(noisy_residual, t, input[:,0].unsqueeze(1)).prev_sample
                     input = torch.cat((previous_noisy_sample, sample_maps, environment_masks), 1)
             images = input.clamp(-1,1).detach().cpu().numpy()
