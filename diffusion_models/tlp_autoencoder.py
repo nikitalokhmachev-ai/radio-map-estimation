@@ -166,7 +166,7 @@ class TLPDiffusionUNet(torch.nn.Module):
             sample = sample / timesteps
 
         if not return_dict:
-            return (sample,)
+            return (sample,), features
 
         return UNet2DOutput(sample=sample), features
 
