@@ -152,7 +152,7 @@ class TLPDiffusionUNet(torch.nn.Module):
             else:
                 sample = upsample_block(sample, res_samples, emb)
 
-        features = sample.copy()
+        features = sample
         # 6. post-process
         sample = self.model.conv_norm_out(sample)
         sample = self.model.conv_act(sample)
