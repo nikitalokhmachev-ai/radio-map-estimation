@@ -81,8 +81,8 @@ class TLPDiffusionUNet(torch.nn.Module):
 
       self.noise = noise
 
-      self.xy_linear_1 = torch.nn.Linear(block_out_channels[-1], xy_features)
-      self.xy_linear_2 = torch.nn.Linear(xy_features, 2)
+      self.xy_linear_1 = torch.nn.Linear(block_out_channels[-1], xy_features).to(device)
+      self.xy_linear_2 = torch.nn.Linear(xy_features, 2).to(device)
 
     def forward(
         self,
