@@ -140,7 +140,7 @@ class TLPDiffusionUNet(torch.nn.Module):
 
         # 4. mid
         sample = self.model.mid_block(sample, emb)
-
+        features = sample
         # 5. up
         skip_sample = None
         for upsample_block in self.model.up_blocks:
@@ -152,7 +152,7 @@ class TLPDiffusionUNet(torch.nn.Module):
             else:
                 sample = upsample_block(sample, res_samples, emb)
 
-        features = sample
+        
         # 6. post-process
         sample = self.model.conv_norm_out(sample)
         sample = self.model.conv_act(sample)
@@ -166,7 +166,7 @@ class TLPDiffusionUNet(torch.nn.Module):
             sample = sample / timesteps
 
         if not return_dict:
-            return (sample,), features
+            return (sample, features)
 
         return UNet2DOutput(sample=sample), features
 
