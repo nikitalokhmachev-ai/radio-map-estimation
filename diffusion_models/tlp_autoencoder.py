@@ -87,7 +87,6 @@ class TLPDiffusionUNet(torch.nn.Module):
     def forward(
         self,
         sample: torch.FloatTensor,
-        xy: torch.FloatTensor,
         timestep: Union[torch.Tensor, float, int],
         class_labels: Optional[torch.Tensor] = None,
         return_dict: bool = True,
@@ -204,7 +203,7 @@ class TLPDiffusionUNet(torch.nn.Module):
             model_input = torch.cat((noisy_images, sample_maps, environment_masks), 1)
             
             # Predict the noise residual
-            noise_pred, xy = self.model(model_input, timesteps, return_dict=False)[0][:,0:1]
+            noise_pred, xy = self.forward(model_input, timesteps, return_dict=False)[0][:,0:1]
             reconstruction_loss = torch.nn.functional.mse_loss(noise_pred, noise)
             location_loss = torch.nn.functional.mse_loss(xy, tx_loc)
             loss = w_rec * reconstruction_loss + w_loc * location_loss
@@ -292,7 +291,7 @@ class TLPDiffusionUNet(torch.nn.Module):
             inputs = torch.cat((noise, sample_maps, environment_masks), 1).to(device)
             for t in noise_scheduler.timesteps:
                 with torch.no_grad():
-                    noisy_residual, _ = self.model(inputs, t).sample[:,0:1]
+                    noisy_residual, _ = self.forward(inputs, t).sample[:,0:1]
                     previous_noisy_sample = noise_scheduler.step(noisy_residual, t, inputs[:,0].unsqueeze(1)).prev_sample
                     inputs = torch.cat((previous_noisy_sample, sample_maps, environment_masks), 1)
             t_y_point_preds = (inputs.clamp(-1,1)[:,0].detach().cpu().unsqueeze(1).flatten(1).numpy() + 1) / 2
@@ -329,7 +328,7 @@ class TLPDiffusionUNet(torch.nn.Module):
             input = torch.cat((noise, sample_maps, environment_masks), 1)
             for t in noise_scheduler.timesteps:
                 with torch.no_grad():
-                    noisy_residual, _ = self.model(input, t).sample[:,0:1]
+                    noisy_residual, _ = self.forward(input, t).sample[:,0:1]
                     previous_noisy_sample = noise_scheduler.step(noisy_residual, t, input[:,0].unsqueeze(1)).prev_sample
                     input = torch.cat((previous_noisy_sample, sample_maps, environment_masks), 1)
             images = input.clamp(-1,1).detach().cpu().numpy()
