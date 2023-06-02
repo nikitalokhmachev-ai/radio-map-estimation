@@ -181,6 +181,7 @@ class TLPDiffusionUNet(torch.nn.Module):
             clean_images = t_channel_pows.to(torch.float32).to(device) * 2 - 1
             sample_maps = t_x_points[:,0].to(torch.float32).to(device).unsqueeze(1) * 2 - 1
             environment_masks = t_x_points[:,1].to(torch.float32).to(device).unsqueeze(1)
+            tx_loc = tx_loc.to(device)
 
             # Sample noise to add to the images
             if self.noise:
