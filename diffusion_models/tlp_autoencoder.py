@@ -144,9 +144,7 @@ class TLPDiffusionUNet(torch.nn.Module):
         # 4. mid
         sample = self.model.mid_block(sample, emb)
         features = torch.nn.functional.silu(self.xy_linear_1(sample.mean((2,3))))
-        print('features',features.shape)
         xy = torch.nn.functional.sigmoid(self.xy_linear_2(features))
-        print('xy', xy.shape)
         # 5. up
         skip_sample = None
         for upsample_block in self.model.up_blocks:
@@ -170,8 +168,7 @@ class TLPDiffusionUNet(torch.nn.Module):
         if self.model.config.time_embedding_type == "fourier":
             timesteps = timesteps.reshape((sample.shape[0], *([1] * len(sample.shape[1:]))))
             sample = sample / timesteps
-
-        print('sample', sample.shape)
+        
         if not return_dict:
             return (sample, xy)
 
@@ -205,6 +202,7 @@ class TLPDiffusionUNet(torch.nn.Module):
             # Predict the noise residual
             noise_pred, xy = self.forward(model_input, timesteps, return_dict=False)[0][:,0:1]
             reconstruction_loss = torch.nn.functional.mse_loss(noise_pred, noise)
+            print(f'xy:{xy.shape}, tx_loc:{tx_loc.shape}')
             location_loss = torch.nn.functional.mse_loss(xy, tx_loc)
             loss = w_rec * reconstruction_loss + w_loc * location_loss
             if train:
