@@ -203,6 +203,7 @@ class TLPDiffusionUNet(torch.nn.Module):
             # Predict the noise residual
             noise_pred, xy = self.model(model_input, timesteps, return_dict=False)[0][:,0:1]
             reconstruction_loss = torch.nn.functional.mse_loss(noise_pred, noise)
+            print('xy', xy)
             location_loss = torch.nn.functional.mse_loss(xy, tx_loc)
             loss = w_rec * reconstruction_loss + w_loc * location_loss
             if train:
