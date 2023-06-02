@@ -274,7 +274,7 @@ class TLPDiffusionUNet(torch.nn.Module):
                 wandb.log({'test_loss': test_loss, 'test_reconstruction_loss': test_rec_loss, 'test_location_loss':test_loc_loss})
 
 
-    def evaluate(self, test_dl, scaler, noise_scheduler):
+    def evaluate(self, test_dl, noise_scheduler, scaler=None):
         losses = []
         for step, batch in enumerate(test_dl):
             t_x_points, _, _, t_channel_pows, _, _ = batch
@@ -295,7 +295,10 @@ class TLPDiffusionUNet(torch.nn.Module):
             t_y_point_preds = (inputs.clamp(-1,1)[:,0].detach().cpu().unsqueeze(1).flatten(1).numpy() + 1) / 2
             building_mask = (t_x_points[:,1,:,:].flatten(1) == -1).to(torch.float64).detach().cpu().numpy()
             t_channel_pows = t_channel_pows.flatten(1).to(device).detach().cpu().numpy()
-            loss = (np.linalg.norm((1 - building_mask) * (scaler.reverse_transform(t_channel_pows) - scaler.reverse_transform(t_y_point_preds)), axis=1) ** 2 / np.sum(building_mask == 0, axis=1)).tolist()
+            if scaler:
+                loss = (np.linalg.norm((1 - building_mask) * (scaler.reverse_transform(t_channel_pows) - scaler.reverse_transform(t_y_point_preds)), axis=1) ** 2 / np.sum(building_mask == 0, axis=1)).tolist()
+            else:
+                loss = (np.linalg.norm((1 - building_mask) * (t_channel_pows * 255 - t_y_point_preds * 255), axis=1) ** 2 / np.sum(building_mask == 0, axis=1)).tolist()
             losses += loss
             print(f'{step} {np.sqrt(np.mean(loss))}')
         final_loss = torch.sqrt(torch.Tensor(losses).mean())
