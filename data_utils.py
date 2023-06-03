@@ -11,6 +11,7 @@ import numpy as np
 from torch.utils.data import Dataset
 from PIL import Image
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
+import pickle
 
 # Iterable Dataset class for Deep Completion Autoencoders data
 
