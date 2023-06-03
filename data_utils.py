@@ -104,6 +104,21 @@ def train_scaler(scaler, pickles):
 # Dataset class for RadioMapSeer data
 
 class RadioMapDataset(Dataset):
+  def __init__(self, data_dir):
+    super().__init__()
+    self.samples = glob.glob(os.path.join(data_dir, '*'))
+  
+  def __len__(self):
+    return len(self.samples)
+
+  def __getitem__(self, idx):
+    path = self.samples[idx]
+    with open(path, 'rb') as f:
+      sampled_map, complete_map, building_mask, tx_loc = pickle.load(f)
+    return sampled_map, complete_map, building_mask, complete_map, path, tx_loc
+  
+
+class RadioMapGenerator(Dataset):
     def __init__(self, data_dir):
         self.data_dir = data_dir
         self.map_paths = sorted(glob.glob(os.path.join(data_dir, 'gain', 'DPM', '*')))
