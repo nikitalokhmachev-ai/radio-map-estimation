@@ -21,10 +21,10 @@ class Autoencoder(torch.nn.Module):
             for i, data in enumerate(train_dl):
                 optimizer.zero_grad()
                 t_x_point, t_y_point, t_y_mask, t_channel_pow, file_path, j = data
-                t_x_point, t_y_point, t_y_mask = t_x_point.to(torch.float64).to(device), t_y_point.flatten(1).to(torch.float64).to(device), t_y_mask.flatten(1).to(torch.float64).to(device)
-                t_channel_pow = t_channel_pow.flatten(1).to(torch.float64).to(device)
-                t_y_point_pred = self.forward(t_x_point).to(torch.float64)
-                loss_ = torch.nn.functional.mse_loss(t_y_point * t_y_mask, t_y_point_pred * t_y_mask).to(torch.float64)
+                t_x_point, t_y_point, t_y_mask = t_x_point.to(torch.float32).to(device), t_y_point.flatten(1).to(torch.float32).to(device), t_y_mask.flatten(1).to(torch.float32).to(device)
+                t_channel_pow = t_channel_pow.flatten(1).to(torch.float32).to(device)
+                t_y_point_pred = self.forward(t_x_point).to(torch.float32)
+                loss_ = torch.nn.functional.mse_loss(t_y_point * t_y_mask, t_y_point_pred * t_y_mask).to(torch.float32)
                 if loss == 'rmse':
                     loss_ = torch.sqrt(loss_)
                 loss_.backward()
@@ -44,7 +44,7 @@ class Autoencoder(torch.nn.Module):
                     t_x_point, t_y_point, t_y_mask = t_x_point.to(torch.float32).to(device), t_y_point.flatten(1).to(device), t_y_mask.flatten(1).to(device)
                     t_channel_pow = t_channel_pow.flatten(1).to(device).detach().cpu().numpy()
                     t_y_point_pred = self.forward(t_x_point).detach().cpu().numpy()
-                    building_mask = (t_x_point[:,1,:,:].flatten(1) == -1).to(torch.float64).detach().cpu().numpy()
+                    building_mask = (t_x_point[:,1,:,:].flatten(1) == -1).to(torch.float32).detach().cpu().numpy()
                     if scaler:
                         loss = (np.linalg.norm((1 - building_mask) * (scaler.reverse_transform(t_channel_pows) - scaler.reverse_transform(t_y_point_preds)), axis=1) ** 2 / np.sum(building_mask == 0, axis=1)).tolist()
                     else:
