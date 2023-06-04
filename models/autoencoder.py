@@ -36,7 +36,7 @@ class Autoencoder(torch.nn.Module):
         return running_loss / (i+1)
 
 
-    def evaluate(self, test_dl, scaler):
+    def evaluate(self, test_dl, scaler, dB_max=-47.84, dB_min=-147):
         losses = []
         with torch.no_grad():
             for i, data in enumerate(test_dl):
@@ -46,14 +46,24 @@ class Autoencoder(torch.nn.Module):
                     t_y_point_pred = self.forward(t_x_point).detach().cpu().numpy()
                     building_mask = (t_x_point[:,1,:,:].flatten(1) == -1).to(torch.float32).detach().cpu().numpy()
                     if scaler:
-                        loss = (np.linalg.norm((1 - building_mask) * (scaler.reverse_transform(t_channel_pow) - scaler.reverse_transform(t_y_point_pred)), axis=1) ** 2 / np.sum(building_mask == 0, axis=1)).tolist()
+                        loss = (np.linalg.norm(
+                            (1 - building_mask) * (scaler.reverse_transform(t_channel_pow) - scaler.reverse_transform(t_y_point_pred)), axis=1) ** 2 
+                            / np.sum(building_mask == 0, axis=1)).tolist()
                     else:
-                        loss = (np.linalg.norm((1 - building_mask) * (t_channel_pow * 255 - t_y_point_pred * 255), axis=1) ** 2 / np.sum(building_mask == 0, axis=1)).tolist()
+                        loss = (np.linalg.norm(
+                            (1 - building_mask) * (self.scale_to_dB(t_channel_pow, dB_max, dB_min) - self.scale_to_dB(t_y_point_pred, dB_max, dB_min)), axis=1) ** 2 
+                            / np.sum(building_mask == 0, axis=1)).tolist()
                     losses += loss
-            
                     print(f'{np.sqrt(np.mean(loss))}')
                     
             return torch.sqrt(torch.Tensor(losses).mean())
+        
+
+    def scale_to_dB(self, value, dB_max, dB_min):
+        range_dB = dB_max - dB_min
+        dB = value * range_dB + dB_min
+        return dB
+    
         
     def fit_wandb(self, train_dl, test_dl, scaler, optimizer, project_name, run_name, epochs=100, loss='mse'):
         import wandb

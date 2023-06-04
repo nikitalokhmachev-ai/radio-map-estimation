@@ -157,7 +157,7 @@ class DiffusionUNet(torch.nn.Module):
                 wandb.log({'test_loss': test_loss})
 
 
-    def evaluate(self, test_dl, scaler, noise_scheduler):
+    def evaluate(self, test_dl, noise_scheduler, scaler=None, dB_max=-47.84, dB_min=-147):
         losses = []
         for step, batch in enumerate(test_dl):
             t_x_points, _, _, t_channel_pows, _, _ = batch
@@ -178,12 +178,25 @@ class DiffusionUNet(torch.nn.Module):
             t_y_point_preds = (inputs.clamp(-1,1)[:,0].detach().cpu().unsqueeze(1).flatten(1).numpy() + 1) / 2
             building_mask = (t_x_points[:,1,:,:].flatten(1) == -1).to(torch.float64).detach().cpu().numpy()
             t_channel_pows = t_channel_pows.flatten(1).to(device).detach().cpu().numpy()
-            loss = (np.linalg.norm((1 - building_mask) * (scaler.reverse_transform(t_channel_pows) - scaler.reverse_transform(t_y_point_preds)), axis=1) ** 2 / np.sum(building_mask == 0, axis=1)).tolist()
+            if scaler:
+                loss = (np.linalg.norm(
+                    (1 - building_mask) * (scaler.reverse_transform(t_channel_pows) - scaler.reverse_transform(t_y_point_preds)), axis=1) ** 2 
+                    / np.sum(building_mask == 0, axis=1)).tolist()
+            else:
+                loss = (np.linalg.norm(
+                    (1 - building_mask) * (self.scale_to_dB(t_channel_pows, dB_max, dB_min) - self.scale_to_dB(t_y_point_preds, dB_max, dB_min)), axis=1) ** 2 
+                    / np.sum(building_mask == 0, axis=1)).tolist()            
             losses += loss
             print(f'{step} {np.sqrt(np.mean(loss))}')
         final_loss = torch.sqrt(torch.Tensor(losses).mean())
 
         return final_loss
+    
+    
+    def scale_to_dB(self, value, dB_max, dB_min):
+        range_dB = dB_max - dB_min
+        dB = value * range_dB + dB_min
+        return dB
     
 
     def plot_samples(self, config, epoch, noise_scheduler, data, num_samples=3, fig_size=(15,5)):
