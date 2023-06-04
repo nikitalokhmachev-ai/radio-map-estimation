@@ -191,7 +191,7 @@ class UNet(torch.nn.Module):
             bs = clean_images.shape[0]
 
             # Sample a random timestep for each image
-            timesteps = torch.zeros(bs).long()
+            timesteps = torch.zeros(bs).long().to(device)
 
             model_input = torch.cat((clean_images, sample_maps, environment_masks), 1)
             
