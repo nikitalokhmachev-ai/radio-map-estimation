@@ -181,23 +181,16 @@ class UNet(torch.nn.Module):
             clean_images = t_channel_pows.to(torch.float32).to(device) * 2 - 1
             sample_maps = t_x_points[:,0].to(torch.float32).to(device).unsqueeze(1) * 2 - 1
             environment_masks = t_x_points[:,1].to(torch.float32).to(device).unsqueeze(1)
-
-            # Sample noise to add to the images
-            if self.noise:
-                noise = self.noise
-            else:
-                noise = torch.randn(clean_images.shape).to(clean_images.device)
-                
             bs = clean_images.shape[0]
 
             # Sample a random timestep for each image
             timesteps = torch.zeros(bs).long().to(device)
 
-            model_input = torch.cat((clean_images, sample_maps, environment_masks), 1)
+            model_input = torch.cat((sample_maps, environment_masks), 1)
             
             # Predict the noise residual
-            noise_pred = self.model(model_input, timesteps, return_dict=False)[0][:,0:1]
-            loss = torch.nn.functional.mse_loss(noise_pred, noise)
+            pred = self.model(model_input, timesteps, return_dict=False)[0][:,0:1]
+            loss = torch.nn.functional.mse_loss(pred, clean_images)
             if train:
                 loss.backward()
 
