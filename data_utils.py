@@ -105,9 +105,15 @@ def train_scaler(scaler, pickles):
 # Dataset class for RadioMapSeer data
 
 class RadioMapDataset(Dataset):
-  def __init__(self, data_dir):
+  def __init__(self, data):
     super().__init__()
-    self.samples = glob.glob(os.path.join(data_dir, '*'))
+    if isinstance(data, str):
+        self.samples = glob.glob(os.path.join(data, '*'))
+    elif isinstance(data, list):
+        self.samples = data
+    else:
+        raise ValueError('Argument "Data" should either be a string showing the path to the data directory' \
+                         'or a list of strings showing the paths to individual samples')
   
   def __len__(self):
     return len(self.samples)
