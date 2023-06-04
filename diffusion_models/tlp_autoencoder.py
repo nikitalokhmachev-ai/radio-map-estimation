@@ -329,7 +329,7 @@ class TLPDiffusionUNet(torch.nn.Module):
             input = torch.cat((noise, sample_maps, environment_masks), 1)
             for t in noise_scheduler.timesteps:
                 with torch.no_grad():
-                    noisy_residual, _ = self.forward(input, t)
+                    noisy_residual, _ = self.forward(input, t).sample[:,0:1]
                     previous_noisy_sample = noise_scheduler.step(noisy_residual, t, input[:,0].unsqueeze(1)).prev_sample
                     input = torch.cat((previous_noisy_sample, sample_maps, environment_masks), 1)
             images = input.clamp(-1,1).detach().cpu().numpy()
