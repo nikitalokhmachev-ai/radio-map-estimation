@@ -84,7 +84,7 @@ class UNet(torch.nn.Module):
 
       timestep_input_dim = block_out_channels[0]
       self.model.time_proj = Timesteps(timestep_input_dim, flip_sin_to_cos, freq_shift)
-      self.model.time_embedding = TimestepEmbedding(timestep_input_dim, timestep_input_dim)
+      self.model.time_embedding = TimestepEmbedding(timestep_input_dim, timestep_input_dim).to(device)
       
     def forward(
         self,
