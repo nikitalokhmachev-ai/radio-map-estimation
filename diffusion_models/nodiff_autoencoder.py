@@ -307,7 +307,8 @@ class TLPUNet(torch.nn.Module):
         norm_num_groups = 16,
         norm_eps = 1e-5,
         resnet_time_scale_shift = "default",
-        add_attention = True, 
+        add_attention = True,
+        xy_features=8 
     ):
 
       super().__init__()
@@ -339,6 +340,9 @@ class TLPUNet(torch.nn.Module):
       timestep_input_dim = block_out_channels[0]
       self.model.time_proj = Timesteps(timestep_input_dim, flip_sin_to_cos, freq_shift)
       self.model.time_embedding = TimestepEmbedding(timestep_input_dim, timestep_input_dim*4).to(device)
+
+      self.xy_linear_1 = torch.nn.Linear(block_out_channels[-1], xy_features).to(device)
+      self.xy_linear_2 = torch.nn.Linear(xy_features, 2).to(device)
       
     def forward(
         self,
