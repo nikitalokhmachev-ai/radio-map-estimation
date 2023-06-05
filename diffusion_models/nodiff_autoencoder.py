@@ -399,6 +399,9 @@ class TLPUNet(torch.nn.Module):
 
         # 4. mid
         sample = self.model.mid_block(sample, emb)
+        features = torch.nn.functional.silu(self.xy_linear_1(sample.mean((2,3))))
+        xy = torch.nn.functional.sigmoid(self.xy_linear_2(features))
+
         # 5. up
         skip_sample = None
         for upsample_block in self.model.up_blocks:
@@ -415,6 +418,7 @@ class TLPUNet(torch.nn.Module):
         sample = self.model.conv_norm_out(sample)
         sample = self.model.conv_act(sample)
         sample = self.model.conv_out(sample)
+        print(type(sample))
 
         if skip_sample is not None:
             sample += skip_sample
@@ -424,10 +428,10 @@ class TLPUNet(torch.nn.Module):
             sample = sample / timesteps
         
         if not return_dict:
-            return (sample)
+            print(type(sample))
+            return (sample, xy)
 
-        return UNet2DOutput(sample=sample)
-
+        return UNet2DOutput(sample=sample), xy
 
     def step(self, batch, optimizer=None, lr_scheduler=None, train=True):
         with torch.set_grad_enabled(train):
@@ -443,7 +447,7 @@ class TLPUNet(torch.nn.Module):
             model_input = torch.cat((sample_maps, environment_masks), 1)
             
             # Predict the noise residual
-            pred = self.model(model_input, timesteps, return_dict=False)[:,0:1]
+            pred = self.model(model_input, timesteps, return_dict=False)[0][:,0:1]
             print(pred.shape)
             loss = torch.nn.functional.mse_loss(pred, clean_images)
             if train:
@@ -455,6 +459,37 @@ class TLPUNet(torch.nn.Module):
                 optimizer.zero_grad()
 
         return loss
+
+    '''
+    def step(self, batch, noise_scheduler, w_rec, w_loc, optimizer=None, lr_scheduler=None, train=True):
+        with torch.set_grad_enabled(train):
+            t_x_points, _, _, t_channel_pows, _, tx_loc = batch
+            clean_images = t_channel_pows.to(torch.float32).to(device) * 2 - 1
+            sample_maps = t_x_points[:,0].to(torch.float32).to(device).unsqueeze(1) * 2 - 1
+            environment_masks = t_x_points[:,1].to(torch.float32).to(device).unsqueeze(1)
+            tx_loc = tx_loc.to(device)
+            bs = clean_images.shape[0]
+
+            # Fixed dummy timestep
+            timesteps = torch.zeros(bs).long().to(device)
+
+            model_input = torch.cat((sample_maps, environment_masks), 1)
+            
+            # Predict the map
+            pred, xy = self.forward(model_input, timesteps, return_dict=False)
+            reconstruction_loss = torch.nn.functional.mse_loss(noise_pred, noise)
+            location_loss = torch.nn.functional.mse_loss(xy, tx_loc)
+            loss = w_rec * reconstruction_loss + w_loc * location_loss
+            if train:
+                loss.backward()
+
+                torch.nn.utils.clip_grad_norm_(self.model.parameters(), 1.0)
+                optimizer.step()
+                lr_scheduler.step()
+                optimizer.zero_grad()
+
+        return loss, reconstruction_loss, location_loss
+    '''
 
     def fit(self, config, optimizer, train_dataloader, lr_scheduler):
         # Now you train the model
@@ -499,27 +534,43 @@ class TLPUNet(torch.nn.Module):
                 wandb.log({'test_loss': test_loss})
 
 
-    def evaluate(self, test_dl, scaler):
+    def evaluate(self, test_dl, scaler, dB_max=-47.84, dB_min=-147):
         losses = []
         with torch.no_grad():
-            for i, data in enumerate(test_dl):
-                    t_x_point, t_y_point, t_y_mask, t_channel_pow, file_path, j = data
-                    t_x_point, t_y_point, t_y_mask = t_x_point.to(torch.float32).to(device), t_y_point.flatten(1).to(device), t_y_mask.flatten(1).to(device)
-                    t_channel_pow = t_channel_pow.to(torch.float32).to(device)
+            for i, batch in enumerate(test_dl):
+                    t_x_points, _, _, t_channel_pows, _, i = batch
+                    sample_maps = t_x_points[:,0].to(torch.float32).to(device).unsqueeze(1) * 2 - 1
+                    environment_masks = t_x_points[:,1].to(torch.float32).to(device).unsqueeze(1)
+                    bs = sample_maps.shape[0]
 
-                    mask = (t_x_point[:,1] == -1).unsqueeze(1).to(torch.float32)
-                    x = torch.cat([t_channel_pow, mask], 1)
+                    timesteps = torch.zeros(bs).long().to(device)
+                    model_input = torch.cat((sample_maps, environment_masks), 1)
 
-                    t_y_point_pred = self.forward(x).detach().cpu().numpy()
-                    t_channel_pow = t_channel_pow.flatten(1).detach().cpu().numpy()
-                    building_mask = (t_x_point[:,1,:,:].flatten(1) == -1).to(torch.float64).detach().cpu().numpy()
-                    loss = (np.linalg.norm((1 - building_mask) * (scaler.reverse_transform(t_channel_pow) - scaler.reverse_transform(t_y_point_pred)), axis=1) ** 2 / np.sum(building_mask == 0, axis=1)).tolist()
+                    preds = (self.model(model_input, timesteps, return_dict=False)[0][:,0:1].flatten(1).detach().cpu().numpy() + 1) / 2
+                    building_mask = (t_x_points[:,1,:,:].flatten(1) == -1).detach().cpu().numpy()
+                    t_channel_pows = t_channel_pows.to(torch.float32).flatten(1).detach().cpu().numpy()
+
+                    if scaler:
+                        loss = (np.linalg.norm(
+                            (1 - building_mask) * (scaler.reverse_transform(t_channel_pows) - scaler.reverse_transform(preds)), axis=1) ** 2 
+                            / np.sum(building_mask == 0, axis=1)).tolist()
+                    else:
+                        loss = (np.linalg.norm(
+                            (1 - building_mask) * (self.scale_to_dB(t_channel_pows, dB_max, dB_min) - self.scale_to_dB(preds, dB_max, dB_min)), axis=1) ** 2 
+                            / np.sum(building_mask == 0, axis=1)).tolist()                   
+                    
                     losses += loss
             
                     print(f'{np.sqrt(np.mean(loss))}')
                     
             return torch.sqrt(torch.Tensor(losses).mean())
     
+
+    def scale_to_dB(self, value, dB_max, dB_min):
+        range_dB = dB_max - dB_min
+        dB = value * range_dB + dB_min
+        return dB
+
 
     def save_model(self, config, name):
         if not os.path.exists(config.output_dir):
