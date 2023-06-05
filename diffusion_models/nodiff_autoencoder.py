@@ -422,7 +422,6 @@ class TLPUNet(torch.nn.Module):
         sample = self.model.conv_norm_out(sample)
         sample = self.model.conv_act(sample)
         sample = self.model.conv_out(sample)
-        print(type(sample))
 
         if skip_sample is not None:
             sample += skip_sample
@@ -432,11 +431,11 @@ class TLPUNet(torch.nn.Module):
             sample = sample / timesteps
         
         if not return_dict:
-            print(type(sample))
-            return (sample)
+            return (sample,)
 
         return UNet2DOutput(sample=sample), xy
 
+    '''
     def step(self, batch, optimizer=None, lr_scheduler=None, train=True):
         with torch.set_grad_enabled(train):
             t_x_points, _, _, t_channel_pows, _, i = batch
@@ -463,8 +462,9 @@ class TLPUNet(torch.nn.Module):
                 optimizer.zero_grad()
 
         return loss
-
     '''
+
+    
     def step(self, batch, noise_scheduler, w_rec, w_loc, optimizer=None, lr_scheduler=None, train=True):
         with torch.set_grad_enabled(train):
             t_x_points, _, _, t_channel_pows, _, tx_loc = batch
@@ -481,7 +481,8 @@ class TLPUNet(torch.nn.Module):
             
             # Predict the map
             pred, xy = self.forward(model_input, timesteps, return_dict=False)
-            reconstruction_loss = torch.nn.functional.mse_loss(noise_pred, noise)
+            print(pred.shape)
+            reconstruction_loss = torch.nn.functional.mse_loss(pred, clean_images)
             location_loss = torch.nn.functional.mse_loss(xy, tx_loc)
             loss = w_rec * reconstruction_loss + w_loc * location_loss
             if train:
@@ -493,7 +494,7 @@ class TLPUNet(torch.nn.Module):
                 optimizer.zero_grad()
 
         return loss, reconstruction_loss, location_loss
-    '''
+    
 
     def fit(self, config, optimizer, train_dataloader, lr_scheduler):
         # Now you train the model
