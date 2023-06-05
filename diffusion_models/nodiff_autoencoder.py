@@ -435,35 +435,6 @@ class TLPUNet(torch.nn.Module):
 
         return UNet2DOutput(sample=sample), xy
 
-    '''
-    def step(self, batch, optimizer=None, lr_scheduler=None, train=True):
-        with torch.set_grad_enabled(train):
-            t_x_points, _, _, t_channel_pows, _, i = batch
-            clean_images = t_channel_pows.to(torch.float32).to(device) * 2 - 1
-            sample_maps = t_x_points[:,0].to(torch.float32).to(device).unsqueeze(1) * 2 - 1
-            environment_masks = t_x_points[:,1].to(torch.float32).to(device).unsqueeze(1)
-            bs = clean_images.shape[0]
-
-            # Sample a random timestep for each image
-            timesteps = torch.zeros(bs).long().to(device)
-
-            model_input = torch.cat((sample_maps, environment_masks), 1)
-            
-            # Predict the noise residual
-            pred = self.model(model_input, timesteps, return_dict=False)[0][:,0:1]
-            print(pred.shape)
-            loss = torch.nn.functional.mse_loss(pred, clean_images)
-            if train:
-                loss.backward()
-
-                torch.nn.utils.clip_grad_norm_(self.model.parameters(), 1.0)
-                optimizer.step()
-                lr_scheduler.step()
-                optimizer.zero_grad()
-
-        return loss
-    '''
-
     
     def step(self, batch, noise_scheduler, w_rec, w_loc, optimizer=None, lr_scheduler=None, train=True):
         with torch.set_grad_enabled(train):
@@ -495,48 +466,65 @@ class TLPUNet(torch.nn.Module):
 
         return loss, reconstruction_loss, location_loss
     
-
-    def fit(self, config, optimizer, train_dataloader, lr_scheduler):
+    
+    def fit(self, config, noise_scheduler, optimizer, train_dataloader, lr_scheduler, w_rec=0.5, w_loc=0.5):
         # Now you train the model
         for epoch in range(config.num_epochs):
-            running_loss = 0.0
+            running_loss, running_reconstruction_loss, running_location_loss = 0.0, 0.0, 0.0
             for step, batch in enumerate(train_dataloader):
-                loss = self.step(batch, optimizer, lr_scheduler)
+                loss, reconstruction_loss, location_loss = self.step(batch, noise_scheduler, w_rec, w_loc, optimizer, lr_scheduler)
                 running_loss += loss.detach().item()
-                print(f'{loss}, [{epoch + 1}, {step + 1:5d}] loss: {running_loss/(step+1)}')
+                running_reconstruction_loss += reconstruction_loss.detach().item()
+                running_location_loss += location_loss.detach().item()
+                print(f'{loss}, [{epoch + 1}, {step + 1:5d}] loss: {running_loss/(step+1)}, reconstruction_loss: {running_reconstruction_loss/(step+1)}, location_loss: {running_location_loss/(step+1)}')
             
             # After each epoch you optionally sample some demo images with evaluate() and save the model
+
+            if (epoch + 1) % config.save_image_epochs == 0 or epoch == config.num_epochs - 1:
+                self.plot_samples(config, epoch, noise_scheduler, data = list(map(lambda x: x[0:4], batch)), num_samples=3, fig_size=(15,5))
         
             if (epoch + 1) % config.save_model_epochs == 0 or epoch == config.num_epochs - 1:
                 self.save_model(config, f'epoch_{epoch}.pth')
 
         return running_loss / (step+1)
 
-    def fit_wandb(self, project_name, run_name, config, optimizer, train_dataloader, lr_scheduler, test_dataloader):
+
+    def fit_wandb(self, project_name, run_name, config, noise_scheduler, optimizer, train_dataloader, lr_scheduler, test_dataloader, w_rec=0.5, w_loc=0.5):
             import wandb
             wandb.init(project=project_name, name=run_name)
 
             for epoch in range(config.num_epochs):
-                running_loss = 0.0
+                running_loss, running_reconstruction_loss, running_location_loss = 0.0, 0.0, 0.0
                 for step, batch in enumerate(train_dataloader):
-                    loss = self.step(batch, optimizer, lr_scheduler, train=True)
+                    loss, reconstruction_loss, location_loss = self.step(batch, noise_scheduler, w_rec, w_loc, optimizer, lr_scheduler)
                     running_loss += loss.detach().item()
-                    train_loss = running_loss / (step+1)
-                    print(f'{loss}, [{epoch + 1}, {step + 1:5d}] train loss: {train_loss}')
+                    running_reconstruction_loss += reconstruction_loss.detach().item()
+                    running_location_loss += location_loss.detach().item()
+                    train_loss = running_loss/(step+1)
+                    train_rec_loss = running_reconstruction_loss/(step+1)
+                    train_loc_loss = running_location_loss/(step+1)
+                    print(f'{loss}, [{epoch + 1}, {step + 1:5d}] loss: {train_loss}, reconstruction_loss: {train_rec_loss}, location_loss: {train_loc_loss}')
                 
-                wandb.log({'train_loss': train_loss})
+                wandb.log({'train_loss': train_loss, 'train_reconstruction_loss': train_rec_loss, 'train_location_loss':train_loc_loss})
+
+                if (epoch + 1) % config.save_image_epochs == 0 or epoch == config.num_epochs - 1:
+                    self.plot_samples(config, epoch, noise_scheduler, data = list(map(lambda x: x[0:4], batch)), num_samples=3, fig_size=(15,5))
             
                 if (epoch + 1) % config.save_model_epochs == 0 or epoch == config.num_epochs - 1:
                     self.save_model(config, f'epoch_{epoch}.pth')
 
-                running_loss = 0.0
+                running_loss, running_reconstruction_loss, running_location_loss = 0.0, 0.0, 0.0
                 for step, batch in enumerate(test_dataloader):
-                    loss = self.step(batch, optimizer, lr_scheduler, train=False)
+                    loss, reconstruction_loss, location_loss = self.step(batch, noise_scheduler, w_rec, w_loc, optimizer, lr_scheduler, train=False)
                     running_loss += loss.detach().item()
-                    test_loss = running_loss / (step+1)
-                    print(f'{loss}, [{step + 1:5d}] test loss: {test_loss}')
+                    running_reconstruction_loss += reconstruction_loss.detach().item()
+                    running_location_loss += location_loss.detach().item()
+                    test_loss = running_loss/(step+1)
+                    test_rec_loss = running_reconstruction_loss/(step+1)
+                    test_loc_loss = running_location_loss/(step+1)
+                    print(f'{loss}, [{epoch + 1}, {step + 1:5d}] loss: {test_loss}, reconstruction_loss: {test_rec_loss}, location_loss: {test_loc_loss}')
                 
-                wandb.log({'test_loss': test_loss})
+                wandb.log({'test_loss': test_loss, 'test_reconstruction_loss': test_rec_loss, 'test_location_loss':test_loc_loss})
 
 
     def evaluate(self, test_dl, scaler, dB_max=-47.84, dB_min=-147):
@@ -575,6 +563,59 @@ class TLPUNet(torch.nn.Module):
         range_dB = dB_max - dB_min
         dB = value * range_dB + dB_min
         return dB
+
+
+    def plot_samples(self, config, epoch, noise_scheduler, data, num_samples=3, fig_size=(15,5)):
+        # Sample some images from random noise (this is the backward diffusion process).
+        # The default pipeline output type is `List[PIL.Image]`
+        
+        rows = data[0].shape[0]
+        cols = 3 + num_samples
+        grid = np.empty((rows, cols, config.image_size, config.image_size))
+
+        t_x_points, _, _, t_channel_pows, _, _ = data
+        complete_maps = t_channel_pows.to(torch.float32).to(device) * 2 - 1
+        sample_maps = t_x_points[:,0].to(torch.float32).to(device).unsqueeze(1) * 2 - 1
+        environment_masks = t_x_points[:,1].to(torch.float32).to(device).unsqueeze(1)
+        bs = sample_maps.shape([0])
+        timesteps = torch.zeros(bs).long().to(device)
+        
+        for i in range(rows):
+            grid[i,0] = sample_maps[i,0].detach().cpu().numpy()
+            grid[i,1] = environment_masks[i,0].detach().cpu().numpy()
+            grid[i,2] = complete_maps[i,0].detach().cpu().numpy()
+
+        for n in range(num_samples):
+            input = torch.cat((sample_maps, environment_masks), 1)
+            with torch.no_grad():
+                pred = self.forward(input, timesteps)[0]
+            images = pred.clamp(-1,1).detach().cpu().numpy()
+
+            for i in range(rows):
+                grid[i,n+3] = images[i,0]
+
+        # Make a grid out of the images
+        col_titles = ['Sample Map', 'Environment Mask', 'Complete Map', 'Generated Maps']
+
+        fig, axs = plt.subplots(rows, cols, figsize=fig_size)
+
+        for c in range(4):
+            axs[0, c].set_title(col_titles[c])
+
+            for i in range(rows):
+                for j in range(cols):
+                    if j == 1:
+                        axs[i,j].matshow(grid[i,j], cmap='binary', vmin=-1, vmax=1)
+                        axs[i,j].axis('off')
+                    else:
+                        axs[i,j].matshow(grid[i,j], cmap='hot', vmin=-1, vmax=1)
+                        axs[i,j].axis('off')
+        fig.tight_layout()
+
+        # Save the images
+        test_dir = os.path.join(config.output_dir, "samples")
+        os.makedirs(test_dir, exist_ok=True)
+        plt.savefig(f"{test_dir}/{epoch:04d}.png")
 
 
     def save_model(self, config, name):
