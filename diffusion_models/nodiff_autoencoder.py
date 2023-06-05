@@ -272,7 +272,8 @@ class UNet(torch.nn.Module):
         filepath = os.path.join(config.output_dir, name)
         torch.save(self, filepath)
 
-
+class DummyClass:
+    pass
 
 class TLPUNet(torch.nn.Module):
     def __init__(
