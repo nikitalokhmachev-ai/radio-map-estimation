@@ -588,7 +588,7 @@ class TLPUNet(torch.nn.Module):
         for n in range(num_samples):
             input = torch.cat((sample_maps, environment_masks), 1)
             with torch.no_grad():
-                pred = self.forward(input, timesteps)[0]
+                pred = self.forward(input, timesteps, return_dict=False)[0]
             images = pred.clamp(-1,1).detach().cpu().numpy()
 
             for i in range(rows):
