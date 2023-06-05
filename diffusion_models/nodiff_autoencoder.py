@@ -431,7 +431,7 @@ class TLPUNet(torch.nn.Module):
             sample = sample / timesteps
         
         if not return_dict:
-            return (sample,)
+            return (sample, xy)
 
         return UNet2DOutput(sample=sample), xy
 
