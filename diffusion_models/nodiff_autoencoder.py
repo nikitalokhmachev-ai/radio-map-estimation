@@ -577,7 +577,7 @@ class TLPUNet(torch.nn.Module):
         complete_maps = t_channel_pows.to(torch.float32).to(device) * 2 - 1
         sample_maps = t_x_points[:,0].to(torch.float32).to(device).unsqueeze(1) * 2 - 1
         environment_masks = t_x_points[:,1].to(torch.float32).to(device).unsqueeze(1)
-        bs = sample_maps.shape([0])
+        bs = sample_maps.shape[0]
         timesteps = torch.zeros(bs).long().to(device)
         
         for i in range(rows):
