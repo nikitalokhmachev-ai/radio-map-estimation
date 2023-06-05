@@ -433,7 +433,7 @@ class TLPUNet(torch.nn.Module):
         
         if not return_dict:
             print(type(sample))
-            return (sample, xy)
+            return (sample)
 
         return UNet2DOutput(sample=sample), xy
 
