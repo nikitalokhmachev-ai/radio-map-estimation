@@ -436,7 +436,7 @@ class TLPUNet(torch.nn.Module):
         return UNet2DOutput(sample=sample), xy
 
     
-    def step(self, batch, noise_scheduler, w_rec, w_loc, optimizer=None, lr_scheduler=None, train=True):
+    def step(self, batch, w_rec, w_loc, optimizer=None, lr_scheduler=None, train=True):
         with torch.set_grad_enabled(train):
             t_x_points, _, _, t_channel_pows, _, tx_loc = batch
             clean_images = t_channel_pows.to(torch.float32).to(device) * 2 - 1
@@ -467,12 +467,12 @@ class TLPUNet(torch.nn.Module):
         return loss, reconstruction_loss, location_loss
     
     
-    def fit(self, config, noise_scheduler, optimizer, train_dataloader, lr_scheduler, w_rec=0.5, w_loc=0.5):
+    def fit(self, config, optimizer, train_dataloader, lr_scheduler, w_rec=0.5, w_loc=0.5):
         # Now you train the model
         for epoch in range(config.num_epochs):
             running_loss, running_reconstruction_loss, running_location_loss = 0.0, 0.0, 0.0
             for step, batch in enumerate(train_dataloader):
-                loss, reconstruction_loss, location_loss = self.step(batch, noise_scheduler, w_rec, w_loc, optimizer, lr_scheduler)
+                loss, reconstruction_loss, location_loss = self.step(batch, w_rec, w_loc, optimizer, lr_scheduler)
                 running_loss += loss.detach().item()
                 running_reconstruction_loss += reconstruction_loss.detach().item()
                 running_location_loss += location_loss.detach().item()
@@ -481,7 +481,7 @@ class TLPUNet(torch.nn.Module):
             # After each epoch you optionally sample some demo images with evaluate() and save the model
 
             if (epoch + 1) % config.save_image_epochs == 0 or epoch == config.num_epochs - 1:
-                self.plot_samples(config, epoch, noise_scheduler, data = list(map(lambda x: x[0:4], batch)), num_samples=3, fig_size=(15,5))
+                self.plot_samples(config, epoch, data = list(map(lambda x: x[0:4], batch)), num_samples=3, fig_size=(15,5))
         
             if (epoch + 1) % config.save_model_epochs == 0 or epoch == config.num_epochs - 1:
                 self.save_model(config, f'epoch_{epoch}.pth')
@@ -489,14 +489,14 @@ class TLPUNet(torch.nn.Module):
         return running_loss / (step+1)
 
 
-    def fit_wandb(self, project_name, run_name, config, noise_scheduler, optimizer, train_dataloader, lr_scheduler, test_dataloader, w_rec=0.5, w_loc=0.5):
+    def fit_wandb(self, project_name, run_name, config, optimizer, train_dataloader, lr_scheduler, test_dataloader, w_rec=0.5, w_loc=0.5):
             import wandb
             wandb.init(project=project_name, name=run_name)
 
             for epoch in range(config.num_epochs):
                 running_loss, running_reconstruction_loss, running_location_loss = 0.0, 0.0, 0.0
                 for step, batch in enumerate(train_dataloader):
-                    loss, reconstruction_loss, location_loss = self.step(batch, noise_scheduler, w_rec, w_loc, optimizer, lr_scheduler)
+                    loss, reconstruction_loss, location_loss = self.step(batch, w_rec, w_loc, optimizer, lr_scheduler)
                     running_loss += loss.detach().item()
                     running_reconstruction_loss += reconstruction_loss.detach().item()
                     running_location_loss += location_loss.detach().item()
@@ -508,14 +508,14 @@ class TLPUNet(torch.nn.Module):
                 wandb.log({'train_loss': train_loss, 'train_reconstruction_loss': train_rec_loss, 'train_location_loss':train_loc_loss})
 
                 if (epoch + 1) % config.save_image_epochs == 0 or epoch == config.num_epochs - 1:
-                    self.plot_samples(config, epoch, noise_scheduler, data = list(map(lambda x: x[0:4], batch)), num_samples=3, fig_size=(15,5))
+                    self.plot_samples(config, epoch, data = list(map(lambda x: x[0:4], batch)), num_samples=3, fig_size=(15,5))
             
                 if (epoch + 1) % config.save_model_epochs == 0 or epoch == config.num_epochs - 1:
                     self.save_model(config, f'epoch_{epoch}.pth')
 
                 running_loss, running_reconstruction_loss, running_location_loss = 0.0, 0.0, 0.0
                 for step, batch in enumerate(test_dataloader):
-                    loss, reconstruction_loss, location_loss = self.step(batch, noise_scheduler, w_rec, w_loc, optimizer, lr_scheduler, train=False)
+                    loss, reconstruction_loss, location_loss = self.step(batch, w_rec, w_loc, optimizer, lr_scheduler, train=False)
                     running_loss += loss.detach().item()
                     running_reconstruction_loss += reconstruction_loss.detach().item()
                     running_location_loss += location_loss.detach().item()
