@@ -565,7 +565,7 @@ class TLPUNet(torch.nn.Module):
         return dB
 
 
-    def plot_samples(self, config, epoch, noise_scheduler, data, num_samples=3, fig_size=(15,5)):
+    def plot_samples(self, config, epoch, data, num_samples=1, fig_size=(15,5)):
         # Sample some images from random noise (this is the backward diffusion process).
         # The default pipeline output type is `List[PIL.Image]`
         
