@@ -452,7 +452,6 @@ class TLPUNet(torch.nn.Module):
             
             # Predict the map
             pred, xy = self.forward(model_input, timesteps, return_dict=False)
-            print(pred.shape)
             reconstruction_loss = torch.nn.functional.mse_loss(pred, clean_images)
             location_loss = torch.nn.functional.mse_loss(xy, tx_loc)
             loss = w_rec * reconstruction_loss + w_loc * location_loss
