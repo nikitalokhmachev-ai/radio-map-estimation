@@ -244,26 +244,41 @@ class UNet(torch.nn.Module):
                 wandb.log({'test_loss': test_loss})
 
 
-    def evaluate(self, test_dl, scaler):
+    def evaluate(self, test_dl, scaler=None, dB_max=-47.84, dB_min=-147):
         losses = []
         with torch.no_grad():
-            for i, data in enumerate(test_dl):
-                    t_x_point, t_y_point, t_y_mask, t_channel_pow, file_path, j = data
-                    t_x_point, t_y_point, t_y_mask = t_x_point.to(torch.float32).to(device), t_y_point.flatten(1).to(device), t_y_mask.flatten(1).to(device)
-                    t_channel_pow = t_channel_pow.to(torch.float32).to(device)
+            for i, batch in enumerate(test_dl):
+                    t_x_points, _, _, t_channel_pows, _, i = batch
+                    sample_maps = t_x_points[:,0].to(torch.float32).to(device).unsqueeze(1) * 2 - 1
+                    environment_masks = t_x_points[:,1].to(torch.float32).to(device).unsqueeze(1)
+                    bs = sample_maps.shape[0]
 
-                    mask = (t_x_point[:,1] == -1).unsqueeze(1).to(torch.float32)
-                    x = torch.cat([t_channel_pow, mask], 1)
+                    timesteps = torch.zeros(bs).long().to(device)
+                    model_input = torch.cat((sample_maps, environment_masks), 1)
 
-                    t_y_point_pred = self.forward(x).detach().cpu().numpy()
-                    t_channel_pow = t_channel_pow.flatten(1).detach().cpu().numpy()
-                    building_mask = (t_x_point[:,1,:,:].flatten(1) == -1).to(torch.float64).detach().cpu().numpy()
-                    loss = (np.linalg.norm((1 - building_mask) * (scaler.reverse_transform(t_channel_pow) - scaler.reverse_transform(t_y_point_pred)), axis=1) ** 2 / np.sum(building_mask == 0, axis=1)).tolist()
+                    preds = (self.model(model_input, timesteps, return_dict=False)[0][:,0:1].flatten(1).detach().cpu().numpy() + 1) / 2
+                    building_mask = (t_x_points[:,1,:,:].flatten(1) == -1).detach().cpu().numpy()
+                    t_channel_pows = t_channel_pows.to(torch.float32).flatten(1).detach().cpu().numpy()
+
+                    if scaler:
+                        loss = (np.linalg.norm(
+                            (1 - building_mask) * (scaler.reverse_transform(t_channel_pows) - scaler.reverse_transform(preds)), axis=1) ** 2 
+                            / np.sum(building_mask == 0, axis=1)).tolist()
+                    else:
+                        loss = (np.linalg.norm(
+                            (1 - building_mask) * (self.scale_to_dB(t_channel_pows, dB_max, dB_min) - self.scale_to_dB(preds, dB_max, dB_min)), axis=1) ** 2 
+                            / np.sum(building_mask == 0, axis=1)).tolist()                   
+                    
                     losses += loss
             
                     print(f'{np.sqrt(np.mean(loss))}')
                     
             return torch.sqrt(torch.Tensor(losses).mean())
+        
+    def scale_to_dB(self, value, dB_max, dB_min):
+        range_dB = dB_max - dB_min
+        dB = value * range_dB + dB_min
+        return dB
     
 
     def save_model(self, config, name):
@@ -526,7 +541,7 @@ class TLPUNet(torch.nn.Module):
                 wandb.log({'test_loss': test_loss, 'test_reconstruction_loss': test_rec_loss, 'test_location_loss':test_loc_loss})
 
 
-    def evaluate(self, test_dl, scaler, dB_max=-47.84, dB_min=-147):
+    def evaluate(self, test_dl, scaler=None, dB_max=-47.84, dB_min=-147):
         losses = []
         with torch.no_grad():
             for i, batch in enumerate(test_dl):
