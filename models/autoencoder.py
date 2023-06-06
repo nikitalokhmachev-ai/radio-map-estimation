@@ -36,7 +36,7 @@ class Autoencoder(torch.nn.Module):
         return running_loss / (i+1)
 
 
-    def evaluate(self, test_dl, scaler, dB_max=-47.84, dB_min=-147):
+    def evaluate(self, test_dl, scaler, dB_max=-47.84, dB_min=-147, no_scale=False):
         losses = []
         with torch.no_grad():
             for i, data in enumerate(test_dl):
@@ -50,9 +50,14 @@ class Autoencoder(torch.nn.Module):
                             (1 - building_mask) * (scaler.reverse_transform(t_channel_pow) - scaler.reverse_transform(t_y_point_pred)), axis=1) ** 2 
                             / np.sum(building_mask == 0, axis=1)).tolist()
                     else:
-                        loss = (np.linalg.norm(
-                            (1 - building_mask) * (self.scale_to_dB(t_channel_pow, dB_max, dB_min) - self.scale_to_dB(t_y_point_pred, dB_max, dB_min)), axis=1) ** 2 
-                            / np.sum(building_mask == 0, axis=1)).tolist()
+                        if no_scale==True:
+                            loss = (np.linalg.norm(
+                                (1 - building_mask) * (t_channel_pow - t_y_point_pred), axis=1) ** 2 
+                                / np.sum(building_mask == 0, axis=1)).tolist()
+                        else:
+                            loss = (np.linalg.norm(
+                                (1 - building_mask) * (self.scale_to_dB(t_channel_pow, dB_max, dB_min) - self.scale_to_dB(t_y_point_pred, dB_max, dB_min)), axis=1) ** 2 
+                                / np.sum(building_mask == 0, axis=1)).tolist()
                     losses += loss
                     print(f'{np.sqrt(np.mean(loss))}')
                     
@@ -70,7 +75,7 @@ class Autoencoder(torch.nn.Module):
         wandb.init(project=project_name, name=run_name)
         for epoch in range(epochs):
             train_loss = self.fit(train_dl, optimizer, epochs=1, loss=loss)
-            test_loss = self.evaluate(test_dl, scaler)
+            test_loss = self.evaluate(test_dl, scaler, no_scale=True)
             wandb.log({'train_loss': train_loss, 'test_loss': test_loss})
 
     def save_model(self, out_path):
