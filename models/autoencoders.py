@@ -210,9 +210,8 @@ class TLPResUNetAutoencoder(Autoencoder):
             t_x_point, t_y_point, t_y_mask = t_x_point.to(torch.float32).to(device), t_y_point.flatten(1).to(torch.float32).to(device), t_y_mask.flatten(1).to(torch.float32).to(device)
             t_channel_pow = t_channel_pow.flatten(1).to(torch.float32).to(device)
             t_y_point_pred, tx_loc_pred = self.forward(t_x_point)
-            t_y_point_pred = t_y_point_pred.to(torch.float32)
-            tx_loc_pred = tx_loc_pred.to(torch.float32)
-            print('Predictions:', t_y_point_pred.max(), t_y_point_pred.min(), t_y_point_pred.max() - t_y_point_pred.min())
+            t_y_point_pred = t_y_point_pred.to(torch.float32).to(device)
+            tx_loc_pred = tx_loc_pred.to(torch.float32).to(device)
             rec_loss_ = torch.nn.functional.mse_loss(t_y_point * t_y_mask, t_y_point_pred * t_y_mask).to(torch.float32)
             loc_loss_ = torch.nn.functional.mse_loss(tx_loc, tx_loc_pred).to(torch.float32)
             loss_ = w_rec * rec_loss_ + w_loc * loc_loss_
