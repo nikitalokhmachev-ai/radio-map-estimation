@@ -3,6 +3,7 @@ from .resnet import Encoder as ResnetEncoder, Decoder as ResnetDecoder
 from .unet import Encoder as UNetEncoder, Decoder as UNetDecoder
 from .res_unet import Encoder as ResUNetEncoder, Decoder as ResUNetDecoder
 from .res_unet_concat import Encoder as ResUNetConcatEncoder, Decoder as ResUNetConcatDecoder
+from .tlp_res_unet import Encoder as TLPResUNetEncoder, Decoder as TLPResUNetDecoder
 
 from .vae import Encoder as VariationalEncoder, Decoder as VariationalDecoder
 from .resnet_vae import Encoder as ResnetVariationalEncoder, Decoder as ResnetVariationalDecoder
@@ -41,6 +42,7 @@ from .unet_concat_input import Encoder as UNetConcatInputEncoder, Decoder as UNe
 from .unet_dual_encoder import Encoder as UNetDualEncoder
 from .autoencoder import Autoencoder
 
+import os
 import torch
 import numpy as np
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
@@ -189,6 +191,50 @@ class UNetAutoencoder_SeparateMasks(UNetAutoencoder):
                     print(f'{np.sqrt(np.mean(loss))}')
                     
             return torch.sqrt(torch.Tensor(losses).mean())
+
+
+class TLPResUNetAutoencoder(Autoencoder):
+    def __init__(self, enc_in=2, enc_out=4, dec_out=1, n_dim=27, xy_features=8, leaky_relu_alpha=0.3):
+        super().__init__()
+        self.encoder = TLPResUNetEncoder(enc_in, enc_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
+        self.decoder = TLPResUNetDecoder(enc_in, enc_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
+
+    def forward(self, x):
+        x, tx_loc = self.encoder(x)
+        x = self.decoder(x)
+        return x, tx_loc
+    
+    def fit(self, train_dl, optimizer, w_rec=0.5, w_loc=0.5, epochs=100, save_model_epochs = 25, save_model_dir = '/content', loss='mse'):
+        for epoch in range(epochs):
+            running_loss = 0.0
+            rec_running_loss = 0.0
+            loc_running_loss = 0.0
+            for i, data in enumerate(train_dl):
+                optimizer.zero_grad()
+                t_x_point, t_y_point, t_y_mask, t_channel_pow, file_path, tx_loc = data
+                t_x_point, t_y_point, t_y_mask = t_x_point.to(torch.float32).to(device), t_y_point.flatten(1).to(torch.float32).to(device), t_y_mask.flatten(1).to(torch.float32).to(device)
+                t_channel_pow = t_channel_pow.flatten(1).to(torch.float32).to(device)
+                t_y_point_pred, tx_loc_pred = self.forward(t_x_point).to(torch.float32)
+                rec_loss_ = torch.nn.functional.mse_loss(t_y_point * t_y_mask, t_y_point_pred * t_y_mask).to(torch.float32)
+                loc_loss_ = torch.nn.functional.mse_loss(tx_loc, tx_loc_pred).to(torch.float32)
+                loss_ = w_rec * rec_loss_ + w_loc * loc_loss_
+                if loss == 'rmse':
+                    loss_ = torch.sqrt(loss_)
+                loss_.backward()
+                optimizer.step()
+
+                running_loss += loss_.item()   
+                rec_running_loss += rec_loss_.item()
+                loc_running_loss += loc_loss_.item()     
+                print(f'{loss_}, [{epoch + 1}, {i + 1:5d}] loss: {running_loss/(i+1)}, reconstruction_loss: {rec_running_loss/(i+1)}, location_loss: {loc_running_loss/(i+1)}')
+
+            if (epoch + 1) % save_model_epochs == 0 or epoch == epochs - 1:
+                if not os.path.exists(save_model_dir):
+                    os.makedirs(save_model_dir)
+                filepath = os.path.join(save_model_dir, f'epoch_{epoch}.pth')
+                torch.save(self, filepath)
+
+        return running_loss / (i+1)
 
 
 # Variational Autoencoders
