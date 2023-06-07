@@ -278,7 +278,10 @@ class TLPResUNetAutoencoder(Autoencoder):
                 test_loc_loss = loc_running_loss/(i+1)
                 print(f'{loss}, [{epoch + 1}, {i + 1:5d}] loss: {test_loss}, reconstruction_loss: {test_rec_loss}, location_loss: {test_loc_loss}')
                 
-                wandb.log({'test_loss': test_loss, 'test_reconstruction_loss': test_rec_loss, 'test_location_loss':test_loc_loss})
+            wandb.log({'test_loss': test_loss, 'test_reconstruction_loss': test_rec_loss, 'test_location_loss':test_loc_loss})
+
+
+
 
 
 # Variational Autoencoders

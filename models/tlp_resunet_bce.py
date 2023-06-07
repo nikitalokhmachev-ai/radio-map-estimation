@@ -25,8 +25,6 @@ class Encoder(nn.Module):
         self.conv2d_8 = nn.Conv2d(n_dim, n_dim, kernel_size=(3, 3), padding='same')
         self.average_pooling2d_2 = nn.AvgPool2d(kernel_size=(2, 2))
         self.mu = nn.Conv2d(n_dim, enc_out, kernel_size=(3, 3), padding='same')
-        self.xy_linear_1 = torch.nn.Linear(enc_out, xy_features).to(device)
-        self.xy_linear_2 = torch.nn.Linear(xy_features, 2).to(device)
 
         self.leaky_relu = torch.nn.LeakyReLU(negative_slope=leaky_relu_alpha)
 
