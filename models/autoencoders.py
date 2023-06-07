@@ -197,7 +197,7 @@ class TLPResUNetAutoencoder(Autoencoder):
     def __init__(self, enc_in=2, enc_out=4, dec_out=1, n_dim=27, xy_features=8, leaky_relu_alpha=0.3):
         super().__init__()
         self.encoder = TLPResUNetEncoder(enc_in, enc_out, n_dim, xy_features, leaky_relu_alpha=leaky_relu_alpha)
-        self.decoder = TLPResUNetDecoder(enc_in, enc_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
+        self.decoder = TLPResUNetDecoder(enc_out, dec_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
 
     def forward(self, x):
         x, tx_loc = self.encoder(x)
