@@ -241,7 +241,7 @@ class TLPResUNetAutoencoder(Autoencoder):
 
         return running_loss / (i+1)
     
-    def fit_wandb(self, train_dl, test_dl, scaler, optimizer, project_name, run_name, w_rec=0.5, w_loc=0.5, epochs=100, save_model_epochs=25, save_model_dir='/content', loss='mse'):
+    def fit_wandb(self, train_dl, test_dl, optimizer, project_name, run_name, w_rec=0.5, w_loc=0.5, epochs=100, save_model_epochs=25, save_model_dir='/content', loss='mse'):
         import wandb
         wandb.init(project=project_name, name=run_name)
         for epoch in range(epochs):
