@@ -3,7 +3,7 @@ from .resnet import Encoder as ResnetEncoder, Decoder as ResnetDecoder
 from .unet import Encoder as UNetEncoder, Decoder as UNetDecoder
 from .res_unet import Encoder as ResUNetEncoder, Decoder as ResUNetDecoder
 from .res_unet_concat import Encoder as ResUNetConcatEncoder, Decoder as ResUNetConcatDecoder
-from .tlp_res_unet import Encoder as TLPResUNetEncoder, Decoder as TLPResUNetDecoder
+from .tlp_resunet import Encoder as TLPResUNetEncoder, Decoder as TLPResUNetDecoder
 
 from .vae import Encoder as VariationalEncoder, Decoder as VariationalDecoder
 from .resnet_vae import Encoder as ResnetVariationalEncoder, Decoder as ResnetVariationalDecoder
