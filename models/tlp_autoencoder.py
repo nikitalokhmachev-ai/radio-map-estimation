@@ -4,9 +4,7 @@ import os
 
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
-from .autoencoder import Autoencoder
-
-class TLPAutoencoder(Autoencoder):
+class TLPAutoencoder(torch.nn.Module):
     def __init__(self):
         super().__init__()
 
@@ -134,3 +132,42 @@ class TLPAutoencoder(Autoencoder):
                 print(f'{loss}, [{epoch + 1}, {i + 1:5d}] loss: {test_loss}, reconstruction_loss: {test_rec_loss}, location_loss: {test_loc_loss}')
                 
             wandb.log({'test_loss': test_loss, 'test_reconstruction_loss': test_rec_loss, 'test_location_loss':test_loc_loss})
+
+
+    def evaluate(self, test_dl, scaler, dB_max=-47.84, dB_min=-147, no_scale=False):
+        losses = []
+        with torch.no_grad():
+            for i, data in enumerate(test_dl):
+                    t_x_point, _, _, t_channel_pow, _, _ = data
+                    t_x_point, _, _ = t_x_point.to(torch.float32).to(device)
+                    t_channel_pow = t_channel_pow.flatten(1).to(device).detach().cpu().numpy()
+                    t_y_point_pred, _ = self.forward(t_x_point)
+                    t_y_point_pred = t_y_point_pred.flatten(1).detach().cpu().numpy()
+                    building_mask = (t_x_point[:,1,:,:].flatten(1) == -1).to(torch.float32).detach().cpu().numpy()
+                    if scaler:
+                        loss = (np.linalg.norm(
+                            (1 - building_mask) * (scaler.reverse_transform(t_channel_pow) - scaler.reverse_transform(t_y_point_pred)), axis=1) ** 2 
+                            / np.sum(building_mask == 0, axis=1)).tolist()
+                    else:
+                        if no_scale==True:
+                            loss = (np.linalg.norm(
+                                (1 - building_mask) * (t_channel_pow - t_y_point_pred), axis=1) ** 2 
+                                / np.sum(building_mask == 0, axis=1)).tolist()
+                        else:
+                            loss = (np.linalg.norm(
+                                (1 - building_mask) * (self.scale_to_dB(t_channel_pow, dB_max, dB_min) - self.scale_to_dB(t_y_point_pred, dB_max, dB_min)), axis=1) ** 2 
+                                / np.sum(building_mask == 0, axis=1)).tolist()
+                    losses += loss
+                    print(f'{np.sqrt(np.mean(loss))}')
+                    
+            return torch.sqrt(torch.Tensor(losses).mean())
+        
+
+    def scale_to_dB(self, value, dB_max, dB_min):
+        range_dB = dB_max - dB_min
+        dB = value * range_dB + dB_min
+        return dB
+    
+
+    def save_model(self, out_path):
+        torch.save(self, out_path)
