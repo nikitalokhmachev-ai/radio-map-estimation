@@ -184,6 +184,7 @@ class TLP_BCE_Test(TLPAutoencoder):
         with torch.set_grad_enabled(train):
             if preprocess:
                 t_x_point, tx_loc = batch
+                t_x_point, tx_loc = t_x_point.to(torch.float32).to(device), tx_loc.to(torch.float32).to(device)
             else:
                 t_x_point, t_y_point, t_y_mask, t_channel_pow, file_path, tx_loc = batch
                 t_x_point, t_y_point, t_y_mask = t_x_point.to(torch.float32).to(device), t_y_point.to(torch.float32).to(device), t_y_mask.to(torch.float32).to(device)
