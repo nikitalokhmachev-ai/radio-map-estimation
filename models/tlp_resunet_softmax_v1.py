@@ -10,7 +10,7 @@ from PIL import Image
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
 class Encoder(nn.Module):
-    def __init__(self, enc_in, enc_out, n_dim, xy_features, leaky_relu_alpha=0.3):
+    def __init__(self, enc_in, enc_out, n_dim, leaky_relu_alpha=0.3):
         super(Encoder, self).__init__()
         self.conv2d = nn.Conv2d(enc_in, n_dim, kernel_size=(3, 3), padding='same')
         self.conv2d_1 = nn.Conv2d(n_dim, n_dim, kernel_size=(3, 3), padding='same')
