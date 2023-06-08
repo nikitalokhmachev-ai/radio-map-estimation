@@ -44,7 +44,7 @@ class TLPAutoencoder(Autoencoder):
 
             if self.loc_loss_func == 'mse':
                 loss_func = torch.nn.MSELoss()
-                loc_loss_ = loss_func(tx_loc, tx_loc_pred).to(torch.float32)
+                loc_loss_ = loss_func(tx_loc_pred, tx_loc).to(torch.float32)
             
             else:
                 # Transform tx_loc into one-hot maps
@@ -57,17 +57,17 @@ class TLPAutoencoder(Autoencoder):
 
                 if self.loc_loss_func == 'bce':
                     # Weight BCE Loss by number of negative pixels to positive pixels
-                    pixels = t_x_point.shape[-2] * t_x_point.shape[-1]
+                    pixels = tx_loc_pred.shape[-2] * tx_loc_pred.shape[-1]
                     pos_weight = torch.Tensor([pixels]).to(device)
                     loss_func = torch.nn.BCEWithLogitsLoss(pos_weight=pos_weight)
-                    loc_loss_ = loss_func(tx_loc_map, tx_loc_pred)
+                    loc_loss_ = loss_func(tx_loc_pred, tx_loc_map).to(torch.float32)
 
                 if self.loc_loss_func == 'softmax':
                     # Flatten tx_loc_map and tx_loc_pred
                     tx_loc_map = tx_loc_map.flatten(1)
                     tx_loc_pred = tx_loc_pred.flatten(1)
                     loss_func = torch.nn.CrossEntropyLoss()
-                    loc_loss_ = loss_func(tx_loc_map, tx_loc_pred)
+                    loc_loss_ = loss_func(tx_loc_pred, tx_loc_map).to(torch.float32)
 
             loss_ = w_rec * rec_loss_ + w_loc * loc_loss_
             
