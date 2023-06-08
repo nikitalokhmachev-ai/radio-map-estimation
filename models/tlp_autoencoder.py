@@ -38,7 +38,7 @@ class TLPAutoencoder(Autoencoder):
 
             t_y_point_pred, tx_loc_pred = self.forward(t_x_point)
             t_y_point_pred = t_y_point_pred.to(torch.float32)
-            tx_loc_pred = tx_loc_pred.to(torch.float32)
+            tx_loc_pred = tx_loc_pred.to(torch.float32).to(device)
 
             rec_loss_ = torch.nn.functional.mse_loss(t_y_point * t_y_mask, t_y_point_pred * t_y_mask).to(torch.float32)
 
