@@ -192,8 +192,8 @@ class TLP_BCE_Test(TLPAutoencoder):
 
                 #t_y_point_pred, tx_loc_pred = self.forward(t_x_point)
                 #t_y_point_pred = t_y_point_pred.to(torch.float32)
-                tx_loc_pred = self.forward(t_x_point)
-                tx_loc_pred = tx_loc_pred.to(torch.float32)
+            tx_loc_pred = self.forward(t_x_point)
+            tx_loc_pred = tx_loc_pred.to(torch.float32)
 
             #rec_loss_ = torch.nn.functional.mse_loss(t_y_point * t_y_mask, t_y_point_pred * t_y_mask).to(torch.float32)
 
@@ -216,6 +216,7 @@ class TLP_BCE_Test(TLPAutoencoder):
                 if self.loc_loss_func == 'bce':
                     # Weight BCE Loss by number of negative pixels to positive pixels
                     pixels = tx_loc_pred.shape[-2] * tx_loc_pred.shape[-1]
+                    print(pixels)
                     pos_weight = torch.Tensor([pixels]).to(device)
                     loss_func = torch.nn.BCEWithLogitsLoss(pos_weight=pos_weight)
                     loc_loss_ = loss_func(tx_loc_pred, tx_loc_map).to(torch.float32)
