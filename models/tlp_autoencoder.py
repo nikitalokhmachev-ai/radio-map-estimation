@@ -39,10 +39,9 @@ class TLPAutoencoder(Autoencoder):
             t_y_point_pred, tx_loc_pred = self.forward(t_x_point)
             t_y_point_pred = t_y_point_pred.to(torch.float32)
             tx_loc_pred = tx_loc_pred.to(torch.float32)
-            print('TX Loc Pred', tx_loc_pred.device, 'T Y Point Pred', t_y_point_pred.device)
+            print('TX Loc Pred', tx_loc_pred.device)
 
             rec_loss_ = torch.nn.functional.mse_loss(t_y_point * t_y_mask, t_y_point_pred * t_y_mask).to(torch.float32)
-            print('Rec Loss', rec_loss_.device)
 
             if self.loc_loss_func == 'mse':
                 loss_func = torch.nn.MSELoss()
@@ -54,18 +53,16 @@ class TLPAutoencoder(Autoencoder):
                 channels_ = torch.zeros(tx_loc_pred.shape[0]).to(torch.int)
                 x_coord = torch.round(tx_loc[:,0] * tx_loc_pred.shape[-1]).detach().to(torch.int)
                 y_coord = torch.round(-tx_loc[:,1] * tx_loc_pred.shape[-2]).detach().to(torch.int)
-                tx_loc_map = torch.zeros_like(tx_loc_pred)
+                tx_loc_map = torch.zeros_like(tx_loc_pred).to(device)
                 tx_loc_map[batch_, channels_, y_coord, x_coord] = 1
-                tx_loc_map = tx_loc_map.to(device)
                 print('Tx Loc Map', tx_loc_map.device)
 
                 if self.loc_loss_func == 'bce':
                     # Weight BCE Loss by number of negative pixels to positive pixels
                     pixels = t_x_point.shape[-2] * t_x_point.shape[-1]
-                    pos_weight = torch.Tensor([pixels]).to(device)
+                    pos_weight = torch.Tensor([pixels])
                     print('POS Weight', pos_weight.device)
-                    loss_func = torch.nn.BCEWithLogitsLoss(pos_weight=pos_weight).to(device)
-                    print('Loss Func', loss_func.device)
+                    loss_func = torch.nn.BCEWithLogitsLoss(pos_weight=pos_weight)
                     loc_loss_ = loss_func(tx_loc_map, tx_loc_pred)
                     print('Loc Loss', loc_loss_.device)
 
