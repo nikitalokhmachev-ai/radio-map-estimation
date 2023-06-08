@@ -241,7 +241,7 @@ class TLPResUNetAutoencoderSoftmax_V1(TLPAutoencoder):
         super().__init__()
         self.encoder = TLPResUNetEncoderSoftmax_V1(enc_in, enc_out, n_dim, leaky_relu_alpha)
         self.decoder = TLPResUNetDecoderSoftmax_V1(enc_out, dec_out, n_dim, leaky_relu_alpha)
-        self.loc_loss_fun = 'softmax'
+        self.loc_loss_func = 'softmax'
 
     def forward(self, x):
         x, skip1, skip2, skip3 = self.encoder(x)
