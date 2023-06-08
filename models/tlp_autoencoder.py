@@ -4,7 +4,7 @@ import os
 
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
-from autoencoder import Autoencoder
+from .autoencoder import Autoencoder
 
 class TLPAutoencoder(Autoencoder):
     def __init__(self):
