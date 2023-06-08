@@ -8,6 +8,7 @@ from .tlp_resunet_bce_v1 import Encoder as TLPResUNetEncoderBCE_V1, Decoder as T
 from .tlp_resunet_bce_v2 import Encoder as TLPResUNetEncoderBCE_V2, Decoder as TLPResUNetDecoderBCE_V2
 from .tlp_resunet_softmax_v1 import Encoder as TLPResUNetEncoderSoftmax_V1, Decoder as TLPResUNetDecoderSoftmax_V1
 from .tlp_resunet_softmax_v2 import Encoder as TLPResUNetEncoderSoftmax_V2, Decoder as TLPResUNetDecoderSoftmax_V2
+from .tlp_bce_test import Encoder as TLP_BCE_Encoder, Decoder as TLP_BCE_Decoder
 
 from .vae import Encoder as VariationalEncoder, Decoder as VariationalDecoder
 from .resnet_vae import Encoder as ResnetVariationalEncoder, Decoder as ResnetVariationalDecoder
@@ -45,7 +46,7 @@ from .unet_concat_map_mask import Encoder as UNetConcatMapMaskEncoder, Decoder a
 from .unet_concat_input import Encoder as UNetConcatInputEncoder, Decoder as UNetConcatInputDecoder
 from .unet_dual_encoder import Encoder as UNetDualEncoder
 from .autoencoder import Autoencoder
-from .tlp_autoencoder import TLPAutoencoder
+from .tlp_autoencoder import TLPAutoencoder, TLP_BCE_Test
 
 import os
 import torch
@@ -261,6 +262,19 @@ class TLPResUNetAutoencoderSoftmax_V2(TLPAutoencoder):
         x, skip1, skip2, skip3 = self.encoder(x)
         x, tx_loc = self.decoder(x, skip1, skip2, skip3)
         return x, tx_loc
+
+
+class TLP_BCE_Autoencoder(TLP_BCE_Test):
+    def __init__(self, enc_in=2, enc_out=4, dec_out=1, n_dim=27, leaky_relu_alpha=0.3):
+        super().__init__()
+        self.encoder = TLP_BCE_Encoder(enc_in, enc_out, n_dim, leaky_relu_alpha)
+        self.decoder = TLP_BCE_Decoder(enc_out, dec_out, n_dim, leaky_relu_alpha)
+        self.loc_loss_func = 'bce'
+
+    def forward(self, x):
+        x, skip1, skip2, skip3 = self.encoder(x)
+        tx_loc = self.decoder(x, skip1, skip2, skip3)
+        return tx_loc
 
 
 # Variational Autoencoders
