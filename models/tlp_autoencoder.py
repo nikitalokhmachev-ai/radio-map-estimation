@@ -29,7 +29,7 @@ class TLPAutoencoder(Autoencoder):
         '''
         
     
-    def step(self, batch, optimizer, w_rec=0.5, w_loc=0.5, loc_loss_func='mse', train=True):
+    def step(self, batch, optimizer, w_rec=0.5, w_loc=0.5, train=True):
         with torch.set_grad_enabled(train):
             t_x_point, t_y_point, t_y_mask, t_channel_pow, file_path, tx_loc = batch
             t_x_point, t_y_point, t_y_mask = t_x_point.to(torch.float32).to(device), t_y_point.to(torch.float32).to(device), t_y_mask.to(torch.float32).to(device)
@@ -42,7 +42,7 @@ class TLPAutoencoder(Autoencoder):
 
             rec_loss_ = torch.nn.functional.mse_loss(t_y_point * t_y_mask, t_y_point_pred * t_y_mask).to(torch.float32)
 
-            if loc_loss_func == 'mse':
+            if self.loc_loss_func == 'mse':
                 loss_func = torch.nn.MSELoss()
                 loc_loss_ = loss_func(tx_loc, tx_loc_pred).to(torch.float32)
             
@@ -55,14 +55,14 @@ class TLPAutoencoder(Autoencoder):
                 tx_loc_map = torch.zeros_like(tx_loc_pred)
                 tx_loc_map[batch_, channels_, y_coord, x_coord] = 1
 
-                if loc_loss_func == 'bce':
+                if self.loc_loss_func == 'bce':
                     # Weight BCE Loss by number of negative pixels to positive pixels
                     pixels = t_x_point.shape[-2] * t_x_point.shape[-1]
                     pos_weight = torch.Tensor([pixels])
                     loss_func = torch.nn.BCEWithLogitsLoss(pos_weight=pos_weight)
                     loc_loss_ = loss_func(tx_loc_map, tx_loc_pred)
 
-                if loc_loss == 'softmax':
+                if self.loc_loss_func == 'softmax':
                     # Flatten tx_loc_map and tx_loc_pred
                     tx_loc_map = tx_loc_map.flatten(1)
                     tx_loc_pred = tx_loc_pred.flatten(1)

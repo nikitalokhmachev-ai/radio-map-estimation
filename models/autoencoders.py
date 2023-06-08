@@ -202,6 +202,7 @@ class TLPResUNetAutoencoderXY_V1(TLPAutoencoder):
         super().__init__()
         self.encoder = TLPResUNetEncoderXY_V1(enc_in, enc_out, n_dim, xy_features, leaky_relu_alpha)
         self.decoder = TLPResUNetDecoderXY_V1(enc_out, dec_out, n_dim, leaky_relu_alpha)
+        self.loc_loss_func = 'mse'
 
     def forward(self, x):
         x, tx_loc, skip1, skip2, skip3 = self.encoder(x)
@@ -214,6 +215,7 @@ class TLPResUNetAutoencoderBCE_V1(TLPAutoencoder):
         super().__init__()
         self.encoder = TLPResUNetEncoderBCE_V1(enc_in, enc_out, n_dim, leaky_relu_alpha)
         self.decoder = TLPResUNetDecoderBCE_V1(enc_out, dec_out, n_dim, leaky_relu_alpha)
+        self.loc_loss_func = 'bce'
 
     def forward(self, x):
         x, skip1, skip2, skip3 = self.encoder(x)
@@ -226,6 +228,7 @@ class TLPResUNetAutoencoderBCE_V2(TLPAutoencoder):
         super().__init__()
         self.encoder = TLPResUNetEncoderBCE_V2(enc_in, enc_out, n_dim, leaky_relu_alpha)
         self.decoder = TLPResUNetDecoderBCE_V2(enc_out, dec_out, n_dim, leaky_relu_alpha)
+        self.loc_loss_func = 'softmax'
 
     def forward(self, x):
         x, skip1, skip2, skip3 = self.encoder(x)
