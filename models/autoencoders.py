@@ -7,6 +7,7 @@ from .tlp_resunet_xy_v1 import Encoder as TLPResUNetEncoderXY_V1, Decoder as TLP
 from .tlp_resunet_bce_v1 import Encoder as TLPResUNetEncoderBCE_V1, Decoder as TLPResUNetDecoderBCE_V1
 from .tlp_resunet_bce_v2 import Encoder as TLPResUNetEncoderBCE_V2, Decoder as TLPResUNetDecoderBCE_V2
 from .tlp_resunet_softmax_v1 import Encoder as TLPResUNetEncoderSoftmax_V1, Decoder as TLPResUNetDecoderSoftmax_V1
+from .tlp_resunet_softmax_v2 import Encoder as TLPResUNetEncoderSoftmax_V2, Decoder as TLPResUNetDecoderSoftmax_V2
 
 from .vae import Encoder as VariationalEncoder, Decoder as VariationalDecoder
 from .resnet_vae import Encoder as ResnetVariationalEncoder, Decoder as ResnetVariationalDecoder
@@ -241,6 +242,19 @@ class TLPResUNetAutoencoderSoftmax_V1(TLPAutoencoder):
         super().__init__()
         self.encoder = TLPResUNetEncoderSoftmax_V1(enc_in, enc_out, n_dim, leaky_relu_alpha)
         self.decoder = TLPResUNetDecoderSoftmax_V1(enc_out, dec_out, n_dim, leaky_relu_alpha)
+        self.loc_loss_func = 'softmax'
+
+    def forward(self, x):
+        x, skip1, skip2, skip3 = self.encoder(x)
+        x, tx_loc = self.decoder(x, skip1, skip2, skip3)
+        return x, tx_loc
+    
+
+class TLPResUNetAutoencoderSoftmax_V2(TLPAutoencoder):
+    def __init__(self, enc_in=2, enc_out=4, dec_out=1, n_dim=27, leaky_relu_alpha=0.3):
+        super().__init__()
+        self.encoder = TLPResUNetEncoderSoftmax_V2(enc_in, enc_out, n_dim, leaky_relu_alpha)
+        self.decoder = TLPResUNetDecoderSoftmax_V2(enc_out, dec_out, n_dim, leaky_relu_alpha)
         self.loc_loss_func = 'softmax'
 
     def forward(self, x):
