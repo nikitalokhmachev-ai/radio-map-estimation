@@ -245,7 +245,7 @@ class TLP_BCE_Test(TLPAutoencoder):
             #loc_running_loss = 0.0
             for i, batch in enumerate(train_dl):
                 #loss_, rec_loss_, loc_loss = self.step(batch, optimizer, w_rec, w_loc, train=True)
-                loss_ = self.step(batch, optimizer, train=True)
+                loss_ = self.step(batch, optimizer, train=True, preprocess=preprocess)
                 running_loss += loss_.detach().item()
                 #rec_running_loss += rec_loss_.detach().item()
                 #loc_running_loss += loc_loss.detach().item()
@@ -269,7 +269,7 @@ class TLP_BCE_Test(TLPAutoencoder):
             running_loss = 0.0
             for i, batch in enumerate(train_dl):
                 #loss, rec_loss, loc_loss = self.step(batch, optimizer, w_rec, w_loc, train=True)
-                loss = self.step(batch, optimizer, train=True)
+                loss = self.step(batch, optimizer, train=True, preprocess=preprocess)
                 running_loss += loss.detach().item()
                 #rec_running_loss += rec_loss.detach().item()
                 #loc_running_loss += loc_loss.detach().item()
@@ -292,7 +292,7 @@ class TLP_BCE_Test(TLPAutoencoder):
             running_loss = 0.0
             for i, batch in enumerate(test_dl):
                 #loss, rec_loss, loc_loss = self.step(batch, optimizer, w_rec, w_loc, train=False)
-                loss = self.step(batch, optimizer, train=False)
+                loss = self.step(batch, optimizer, train=False, preprocess=preprocess)
                 running_loss += loss.detach().item()
                 #rec_running_loss += rec_loss.detach().item()
                 #loc_running_loss += loc_loss.detach().item()
