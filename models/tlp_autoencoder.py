@@ -52,7 +52,7 @@ class TLPAutoencoder(Autoencoder):
                 channels_ = torch.zeros(tx_loc_pred.shape[0]).to(torch.int)
                 x_coord = torch.round(tx_loc[:,0] * tx_loc_pred.shape[-1]).detach().to(torch.int)
                 y_coord = torch.round(-tx_loc[:,1] * tx_loc_pred.shape[-2]).detach().to(torch.int)
-                tx_loc_map = torch.zeros_like(tx_loc_pred)
+                tx_loc_map = torch.zeros_like(tx_loc_pred).to(device)
                 tx_loc_map[batch_, channels_, y_coord, x_coord] = 1
 
                 if self.loc_loss_func == 'bce':
