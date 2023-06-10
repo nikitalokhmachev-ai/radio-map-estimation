@@ -36,23 +36,21 @@ class Encoder(nn.Module):
             if isinstance(m, nn.Conv2d):
                 torch.nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
 
+    # Removed res_skip
     def forward(self, x):
         x = self.leaky_relu(self.conv2d(x))
-        res_skip = x
         x = self.leaky_relu(self.conv2d_1(x))
-        x = self.leaky_relu(self.conv2d_2(x) + res_skip)
+        x = self.leaky_relu(self.conv2d_2(x))
         u_skip1 = x
         x = self.average_pooling2d(x)
-        res_skip = x
         x = self.leaky_relu(self.conv2d_3(x))
         x = self.leaky_relu(self.conv2d_4(x))
-        x = self.leaky_relu(self.conv2d_5(x) + res_skip)
+        x = self.leaky_relu(self.conv2d_5(x))
         u_skip2 = x
         x = self.average_pooling2d_1(x)
-        res_skip = x
         x = self.leaky_relu(self.conv2d_6(x))
         x = self.leaky_relu(self.conv2d_7(x))
-        x = self.leaky_relu(self.conv2d_8(x) + res_skip)
+        x = self.leaky_relu(self.conv2d_8(x))
         u_skip3 = x
         x = self.average_pooling2d_2(x)
         x = self.leaky_relu(self.mu(x))
@@ -93,25 +91,23 @@ class Decoder(nn.Module):
             if isinstance(m, nn.ConvTranspose2d):
                 torch.nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
 
+    # Removed res_skip
     def forward(self, x, u_skip1, u_skip2, u_skip3):
         x = self.leaky_relu(self.conv2d_transpose(x))
         x = self.up_sampling2d(x)
         x = torch.cat((x, u_skip3), dim=1)
         x = self.leaky_relu(self.conv2d_transpose_1(x))
-        res_skip = x
         x = self.leaky_relu(self.conv2d_transpose_2(x))
-        x = self.leaky_relu(self.conv2d_transpose_3(x) + res_skip)
+        x = self.leaky_relu(self.conv2d_transpose_3(x))
         x = self.up_sampling2d_1(x)
-        res_skip = x
         x = torch.cat((x, u_skip2), dim=1)
         x = self.leaky_relu(self.conv2d_transpose_4(x))
         x = self.leaky_relu(self.conv2d_transpose_5(x))
-        x = self.leaky_relu(self.conv2d_transpose_6(x) + res_skip)
+        x = self.leaky_relu(self.conv2d_transpose_6(x))
         x = self.up_sampling2d_2(x)
-        res_skip = x
         x = torch.cat((x, u_skip1), dim=1)
         x = self.leaky_relu(self.conv2d_transpose_7(x))
-        x = self.leaky_relu(self.conv2d_transpose_8(x) + res_skip)
+        x = self.leaky_relu(self.conv2d_transpose_8(x))
         map = self.leaky_relu(self.conv2d_transpose_9(x))
         tx_loc = self.conv2d_tx(map)
         #return map, tx_loc

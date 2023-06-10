@@ -216,7 +216,7 @@ class TLP_BCE_Test(TLPAutoencoder):
 
                 if self.loc_loss_func == 'bce':
                     # Weight BCE Loss by number of negative pixels to positive pixels
-                    pixels = tx_loc_pred.shape[-2] * tx_loc_pred.shape[-1]
+                    pixels = tx_loc_pred.shape[-2] * tx_loc_pred.shape[-1] - 1
                     pos_weight = torch.Tensor([pixels]).to(device)
                     loss_func = torch.nn.BCEWithLogitsLoss(pos_weight=pos_weight)
                     loc_loss_ = loss_func(tx_loc_pred, tx_loc_map).to(torch.float32)
