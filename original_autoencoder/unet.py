@@ -3,6 +3,7 @@ from collections import OrderedDict
 import torch
 import torch.nn as nn
 import numpy as np
+import os
 
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
@@ -99,46 +100,91 @@ class UNet(nn.Module):
             )
         )
     
-    def fit(self, train_dl, optimizer, epochs=100, loss='mse'):
-        for epoch in range(epochs):
-            running_loss = 0.0
-            for i, data in enumerate(train_dl):
-                optimizer.zero_grad()
-                t_x_point, t_y_point, t_y_mask, t_channel_pow, file_path, j = data
-                t_x_point, t_y_point, t_y_mask = t_x_point.to(torch.float32).to(device), t_y_point.flatten(1).to(torch.float32).to(device), t_y_mask.flatten(1).to(torch.float32).to(device)
-                t_channel_pow = t_channel_pow.flatten(1).to(torch.float32).to(device)
-                t_y_point_pred = self.forward(t_x_point).to(torch.float32)
-                loss_ = torch.nn.functional.mse_loss(t_y_point * t_y_mask, t_y_point_pred * t_y_mask).to(torch.float32)
-                if loss == 'rmse':
-                    loss_ = torch.sqrt(loss_)
+    def step(self, batch, optimizer, train=True):
+        with torch.set_grad_enabled(train):
+            t_x_point, t_y_point, t_y_mask, t_channel_pow, _, tx_loc = batch
+            t_x_point, t_y_point = t_x_point.to(torch.float32).to(device), t_y_point.to(torch.float32).to(device)
+            t_y_mask, t_channel_pow = t_y_mask.to(torch.float32).to(device), t_channel_pow.to(torch.float32).to(device)
+            tx_loc = tx_loc.to(torch.float32).to(device)
+
+            t_y_point_pred, tx_loc_pred = self.forward(t_x_point).to(torch.float32)
+
+            loss_ = torch.nn.functional.mse_loss(t_y_point * t_y_mask, t_y_point_pred * t_y_mask).to(torch.float32)
+            
+            if train:
                 loss_.backward()
                 optimizer.step()
+                optimizer.zero_grad()
 
-                running_loss += loss_.item()        
+        return loss_
+    
+    def fit(self, train_dl, optimizer, epochs=100, save_model_epochs=25, save_model_dir ='/content'):
+        for epoch in range(epochs):
+            running_loss = 0.0
+            for i, batch in enumerate(train_dl):
+                loss_ = self.step(batch, optimizer, train=True)
+                running_loss += loss_.detach().item()
                 print(f'{loss_}, [{epoch + 1}, {i + 1:5d}] loss: {running_loss/(i+1)}')
 
+            if (epoch + 1) % save_model_epochs == 0 or epoch == epochs - 1:
+                if not os.path.exists(save_model_dir):
+                    os.makedirs(save_model_dir)
+                filepath = os.path.join(save_model_dir, f'epoch_{epoch}.pth')
+                self.save_model(filepath)
+
         return running_loss / (i+1)
+    
+
+    def fit_wandb(self, train_dl, test_dl, optimizer, project_name, run_name, epochs=100, save_model_epochs=25, save_model_dir='/content'):
+        import wandb
+        wandb.init(project=project_name, name=run_name)
+        for epoch in range(epochs):
+            train_running_loss = 0.0
+            for i, batch in enumerate(train_dl):
+                loss = self.step(batch, optimizer, train=True)
+                train_running_loss += loss.detach().item()
+                train_loss = train_running_loss/(i+1)
+                print(f'{loss}, [{epoch + 1}, {i + 1:5d}] loss: {train_loss}')
+                    
+            if (epoch + 1) % save_model_epochs == 0 or epoch == epochs - 1:
+                if not os.path.exists(save_model_dir):
+                    os.makedirs(save_model_dir)
+                filepath = os.path.join(save_model_dir, f'epoch_{epoch}.pth')
+                self.save_model(filepath)
+
+            test_running_loss = 0.0
+            for i, batch in enumerate(test_dl):
+                loss = self.step(batch, optimizer, train=False)
+                test_running_loss += loss.detach().item()
+                test_loss = test_running_loss/(i+1)
+                print(f'{loss}, [{epoch + 1}, {i + 1:5d}] loss: {test_loss}')
+                
+            wandb.log({'train_loss': train_loss, 'test_loss': test_loss})
 
 
-    def evaluate(self, test_dl, scaler, dB_max=-47.84, dB_min=-147):
+    def evaluate(self, test_dl, scaler, dB_max=-47.84, dB_min=-147, no_scale=False):
         losses = []
         with torch.no_grad():
             for i, data in enumerate(test_dl):
-                    t_x_point, t_y_point, t_y_mask, t_channel_pow, file_path, j = data
-                    t_x_point, t_y_point, t_y_mask = t_x_point.to(torch.float32).to(device), t_y_point.flatten(1).to(device), t_y_mask.flatten(1).to(device)
-                    t_channel_pow = t_channel_pow.flatten(1).to(device).detach().cpu().numpy()
+                    t_x_point, t_y_point, t_y_mask, _, _, tx_loc = data
+                    t_x_point, t_y_point = t_x_point.to(torch.float32).to(device), t_y_point.flatten(1).to(device)
+                    t_y_mask, t_channel_pow = t_y_mask.flatten(1).to(device), t_channel_pow.flatten(1).detach().cpu().numpy()
                     t_y_point_pred = self.forward(t_x_point).detach().cpu().numpy()
-                    building_mask = (t_x_point[:,1,:,:].flatten(1) == -1).to(torch.float32).detach().cpu().numpy()
                     if scaler:
-                        loss = (np.linalg.norm(
-                            (1 - building_mask) * (scaler.reverse_transform(t_channel_pow) - scaler.reverse_transform(t_y_point_pred)), axis=1) ** 2 
+                        loss_ = (np.linalg.norm(
+                            t_y_mask * (scaler.reverse_transform(t_y_point) - scaler.reverse_transform(t_y_point_pred)), axis=1) ** 2 
                             / np.sum(building_mask == 0, axis=1)).tolist()
                     else:
-                        loss = (np.linalg.norm(
-                            (1 - building_mask) * (self.scale_to_dB(t_channel_pow, dB_max, dB_min) - self.scale_to_dB(t_y_point_pred, dB_max, dB_min)), axis=1) ** 2 
-                            / np.sum(building_mask == 0, axis=1)).tolist()
-                    losses += loss
-                    print(f'{np.sqrt(np.mean(loss))}')
+                        if no_scale==True:
+                            loss_ = (np.linalg.norm(
+                                t_y_mask * (t_y_point - t_y_point_pred), axis=1) ** 2 
+                                / np.sum(building_mask == 0, axis=1)).tolist()
+                        else:
+                            loss_ = (np.linalg.norm(
+                                t_y_mask * (self.scale_to_dB(t_y_point, dB_max, dB_min) - self.scale_to_dB(t_y_point_pred, dB_max, dB_min)), axis=1) ** 2 
+                                / np.sum(building_mask == 0, axis=1)).tolist()
+                    losses += loss_
+                    print(f'{np.sqrt(np.mean(loss_))}')
                     
             return torch.sqrt(torch.Tensor(losses).mean())
         
@@ -148,14 +194,6 @@ class UNet(nn.Module):
         dB = value * range_dB + dB_min
         return dB
     
-        
-    def fit_wandb(self, train_dl, test_dl, scaler, optimizer, project_name, run_name, epochs=100, loss='mse'):
-        import wandb
-        wandb.init(project=project_name, name=run_name)
-        for epoch in range(epochs):
-            train_loss = self.fit(train_dl, optimizer, epochs=1, loss=loss)
-            test_loss = self.evaluate(test_dl, scaler)
-            wandb.log({'train_loss': train_loss, 'test_loss': test_loss})
 
     def save_model(self, out_path):
         torch.save(self, out_path)
