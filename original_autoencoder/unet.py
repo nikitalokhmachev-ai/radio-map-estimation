@@ -102,12 +102,11 @@ class UNet(nn.Module):
     
     def step(self, batch, optimizer, train=True):
         with torch.set_grad_enabled(train):
-            t_x_point, t_y_point, t_y_mask, t_channel_pow, _, tx_loc = batch
+            t_x_point, t_y_point, t_y_mask, _, _, tx_loc = batch
             t_x_point, t_y_point = t_x_point.to(torch.float32).to(device), t_y_point.to(torch.float32).to(device)
-            t_y_mask, t_channel_pow = t_y_mask.to(torch.float32).to(device), t_channel_pow.to(torch.float32).to(device)
-            tx_loc = tx_loc.to(torch.float32).to(device)
+            t_y_mask, tx_loc = t_y_mask.to(torch.float32).to(device), tx_loc.to(torch.float32).to(device)
 
-            t_y_point_pred, tx_loc_pred = self.forward(t_x_point).to(torch.float32)
+            t_y_point_pred = self.forward(t_x_point).to(torch.float32)
 
             loss_ = torch.nn.functional.mse_loss(t_y_point * t_y_mask, t_y_point_pred * t_y_mask).to(torch.float32)
             
