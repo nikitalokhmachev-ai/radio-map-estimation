@@ -167,21 +167,21 @@ class UNet(nn.Module):
             for i, data in enumerate(test_dl):
                     t_x_point, t_y_point, t_y_mask, _, _, tx_loc = data
                     t_x_point, t_y_point = t_x_point.to(torch.float32).to(device), t_y_point.flatten(1).to(device)
-                    t_y_mask, t_channel_pow = t_y_mask.flatten(1).to(device), t_channel_pow.flatten(1).detach().cpu().numpy()
+                    t_y_mask = t_y_mask.flatten(1).to(device)
                     t_y_point_pred = self.forward(t_x_point).detach().cpu().numpy()
                     if scaler:
                         loss_ = (np.linalg.norm(
                             t_y_mask * (scaler.reverse_transform(t_y_point) - scaler.reverse_transform(t_y_point_pred)), axis=1) ** 2 
-                            / np.sum(building_mask == 0, axis=1)).tolist()
+                            / np.sum(t_y_mask, axis=1)).tolist()
                     else:
                         if no_scale==True:
                             loss_ = (np.linalg.norm(
                                 t_y_mask * (t_y_point - t_y_point_pred), axis=1) ** 2 
-                                / np.sum(building_mask == 0, axis=1)).tolist()
+                                / np.sum(t_y_mask, axis=1)).tolist()
                         else:
                             loss_ = (np.linalg.norm(
                                 t_y_mask * (self.scale_to_dB(t_y_point, dB_max, dB_min) - self.scale_to_dB(t_y_point_pred, dB_max, dB_min)), axis=1) ** 2 
-                                / np.sum(building_mask == 0, axis=1)).tolist()
+                                / np.sum(t_y_mask, axis=1)).tolist()
                     losses += loss_
                     print(f'{np.sqrt(np.mean(loss_))}')
                     
