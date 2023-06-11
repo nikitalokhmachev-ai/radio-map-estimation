@@ -177,8 +177,8 @@ class UNet(nn.Module):
                 test_loc_loss = test_loc_running_loss / (i+1)
                 print(f'{loss_}, [{epoch + 1}, {i + 1:5d}] loss: {test_loss}, reconstruction_loss: {test_rec_loss}, location_loss: {test_loc_loss}')
                 
-            wandb.log({'train_loss': train_loss, 'train_reconstruction_loss': train_rec_loss, 'train_location_loss': train_loc_loss,
-                       'test_loss': test_loss, 'test_reconstruction_loss': test_rec_loss, 'test_location_loss': test_loc_loss})
+            wandb.log({'train_loss': train_rec_loss, 'train_location_loss': train_loc_loss, 'train_combined_loss': train_loss,
+                       'test_loss': test_rec_loss, 'test_location_loss': test_loc_loss, 'test_combined_loss': test_loss})
 
 
     def evaluate(self, test_dl, scaler, dB_max=-47.84, dB_min=-147, no_scale=False):
