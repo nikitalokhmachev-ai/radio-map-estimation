@@ -167,8 +167,8 @@ class UNet(nn.Module):
             for i, data in enumerate(test_dl):
                     t_x_point, t_y_point, t_y_mask, _, _, tx_loc = data
                     t_x_point = t_x_point.to(torch.float32).to(device)
-                    t_y_point = t_y_point.flatten(1).detach().cpu().numpy()
-                    t_y_mask = t_y_mask.flatten(1).to(device)
+                    t_y_point = t_y_point.detach().cpu().numpy()
+                    t_y_mask = t_y_mask.to(device)
                     t_y_point_pred = self.forward(t_x_point).detach().cpu().numpy()
                     if scaler:
                         loss_ = (np.linalg.norm(
