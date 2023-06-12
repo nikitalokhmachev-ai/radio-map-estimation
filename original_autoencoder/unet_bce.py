@@ -110,11 +110,11 @@ class UNetBCE_V2(UNet):
 
         return loss_, rec_loss_, loc_loss_
     
-    def fit(self, train_dl, optimizer, w_rec=0.5, w_loc=0.5, epochs=100, save_model_epochs=25, save_model_dir ='/content'):
+    def fit(self, train_dl, optimizer, w_rec, w_loc, epochs=100, save_model_epochs=25, save_model_dir ='/content'):
         for epoch in range(epochs):
             running_loss, rec_running_loss, loc_running_loss = 0.0, 0.0, 0.0
             for i, batch in enumerate(train_dl):
-                loss_, rec_loss_, loc_loss_ = self.step(batch, optimizer, train=True)
+                loss_, rec_loss_, loc_loss_ = self.step(batch, optimizer, w_rec=w_rec, w_loc=w_loc, train=True)
                 running_loss += loss_.detach().item()
                 rec_running_loss += rec_loss_.detach().item()
                 loc_running_loss += loc_loss_.detach().item()
@@ -127,13 +127,13 @@ class UNetBCE_V2(UNet):
                 self.save_model(filepath)
     
 
-    def fit_wandb(self, train_dl, test_dl, optimizer, project_name, run_name, w_rec=0.5, w_loc=0.5, epochs=100, save_model_epochs=25, save_model_dir='/content'):
+    def fit_wandb(self, train_dl, test_dl, optimizer, project_name, run_name, w_rec, w_loc, epochs=100, save_model_epochs=25, save_model_dir='/content'):
         import wandb
         wandb.init(project=project_name, name=run_name)
         for epoch in range(epochs):
             train_running_loss, train_rec_running_loss, train_loc_running_loss = 0.0, 0.0, 0.0
             for i, batch in enumerate(train_dl):
-                loss_, rec_loss_, loc_loss_ = self.step(batch, optimizer, train=True)
+                loss_, rec_loss_, loc_loss_ = self.step(batch, optimizer, w_rec=w_rec, w_loc=w_loc, train=True)
                 train_running_loss += loss_.detach().item()
                 train_rec_running_loss += rec_loss_.detach().item()
                 train_loc_running_loss += loc_loss_.detach().item()
