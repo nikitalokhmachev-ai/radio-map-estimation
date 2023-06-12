@@ -5,9 +5,11 @@ import torch.nn as nn
 import numpy as np
 import os
 
+from unet import UNet
+
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
-class UNet(nn.Module):
+class UNetXY_V1(UNet):
 
     def __init__(self, in_channels=3, out_channels=1, init_features=32):
         super(UNet, self).__init__()
@@ -73,38 +75,6 @@ class UNet(nn.Module):
         map = torch.sigmoid(self.conv(dec1))
         return map, tx_loc
 
-    @staticmethod
-    def _block(in_channels, features, name):
-        return nn.Sequential(
-            OrderedDict(
-                [
-                    (
-                        name + "conv1",
-                        nn.Conv2d(
-                            in_channels=in_channels,
-                            out_channels=features,
-                            kernel_size=3,
-                            padding=1,
-                            bias=False,
-                        ),
-                    ),
-                    (name + "norm1", nn.BatchNorm2d(num_features=features)),
-                    (name + "relu1", nn.ReLU(inplace=True)),
-                    (
-                        name + "conv2",
-                        nn.Conv2d(
-                            in_channels=features,
-                            out_channels=features,
-                            kernel_size=3,
-                            padding=1,
-                            bias=False,
-                        ),
-                    ),
-                    (name + "norm2", nn.BatchNorm2d(num_features=features)),
-                    (name + "relu2", nn.ReLU(inplace=True)),
-                ]
-            )
-        )
     
     def step(self, batch, optimizer, w_rec, w_loc, train=True):
         with torch.set_grad_enabled(train):
