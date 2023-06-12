@@ -61,7 +61,9 @@ class Autoencoder(torch.nn.Module):
                                 / np.sum(building_mask == 0, axis=1)).tolist()
                     losses += loss
                     print(f'{np.sqrt(np.mean(loss))}')
-                    
+
+            if scaler is None and no_scale==True:
+                return torch.Tensor(losses).mean()        
             return torch.sqrt(torch.Tensor(losses).mean())
         
 
