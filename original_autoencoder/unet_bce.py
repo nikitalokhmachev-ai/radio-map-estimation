@@ -73,7 +73,7 @@ class UNetBCE_V2(UNet):
         dec1 = torch.cat((dec1, enc1), dim=1)
         dec1 = self.decoder1(dec1)
         map = torch.sigmoid(self.conv_map(dec1))
-        tx_loc = torch.sigmoid(self.conv_tx(dec1))
+        tx_loc = self.conv_tx(dec1)
         return map, tx_loc
 
     
@@ -97,7 +97,6 @@ class UNetBCE_V2(UNet):
 
             # Weight positive instances in loss by the total number of pixels divided by the number of transmitters
             tx_ratio = torch.numel(tx_loc_map) // tx_loc_map.sum()
-            return tx_loc_pred, tx_loc_map, tx_ratio
 
             rec_loss_ = nn.functional.mse_loss(t_y_point_pred * t_y_mask, t_y_point * t_y_mask).to(torch.float32)
             loc_loss_ = nn.functional.binary_cross_entropy_with_logits(tx_loc_pred, tx_loc_map, pos_weight=tx_ratio).to(torch.float32)

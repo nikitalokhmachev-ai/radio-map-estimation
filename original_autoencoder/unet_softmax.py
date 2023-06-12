@@ -73,7 +73,7 @@ class UNetSoftmax_V2(UNet):
         dec1 = torch.cat((dec1, enc1), dim=1)
         dec1 = self.decoder1(dec1)
         map = torch.sigmoid(self.conv_map(dec1))
-        tx_loc = torch.sigmoid(self.conv_tx(dec1))
+        tx_loc = self.conv_tx(dec1)
         return map, tx_loc
 
     
@@ -94,8 +94,6 @@ class UNetSoftmax_V2(UNet):
             y_coord = torch.round(-tx_loc[:,1] * tx_loc_pred.shape[-2]).detach().to(torch.int) - 1 # -1 to account for the fact that counting from top starts at 0 but counting from bottom starts from -1 (instead of -0)
             tx_loc_map = torch.zeros_like(tx_loc_pred).to(device)
             tx_loc_map[batch_, channels_, y_coord, x_coord] = 1
-
-            return tx_loc_pred, tx_loc_map
 
             rec_loss_ = nn.functional.mse_loss(t_y_point_pred * t_y_mask, t_y_point * t_y_mask).to(torch.float32)
             loc_loss_ = nn.functional.cross_entropy(tx_loc_pred.flatten(1), tx_loc_map.flatten(1)).to(torch.float32)
