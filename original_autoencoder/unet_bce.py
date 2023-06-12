@@ -9,7 +9,8 @@ from unet import UNet
 
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
-class UNetXY_V1(UNet):
+# UNetBCE_V2 is named to match TLPResUNetBCE_V2, but V1 is not implemented for UNetBCE
+class UNetBCE_V2(UNet):
 
     def __init__(self, in_channels=3, out_channels=1, init_features=32):
         super(UNet, self).__init__()
@@ -25,9 +26,6 @@ class UNetXY_V1(UNet):
         self.pool4 = nn.MaxPool2d(kernel_size=2, stride=2)
 
         self.bottleneck = UNet._block(features * 8, features * 16, name="bottleneck")
-
-        self.xy_linear_1 = torch.nn.Linear(features * 16, init_features).to(device)
-        self.xy_linear_2 = torch.nn.Linear(init_features, 2).to(device)
 
         self.upconv4 = nn.ConvTranspose2d(
             features * 16, features * 8, kernel_size=2, stride=2
@@ -46,7 +44,11 @@ class UNetXY_V1(UNet):
         )
         self.decoder1 = UNet._block(features * 2, features, name="dec1")
 
-        self.conv = nn.Conv2d(
+        self.conv_map = nn.Conv2d(
+            in_channels=features, out_channels=out_channels, kernel_size=1
+        )
+
+        self.conv_tx = nn.Conv2d(
             in_channels=features, out_channels=out_channels, kernel_size=1
         )
 
@@ -57,8 +59,6 @@ class UNetXY_V1(UNet):
         enc4 = self.encoder4(self.pool3(enc3))
 
         bottleneck = self.bottleneck(self.pool4(enc4))
-        tx_loc = torch.nn.functional.silu(self.xy_linear_1(bottleneck.mean((2,3))))
-        tx_loc = torch.nn.functional.sigmoid(self.xy_linear_2(tx_loc))
 
         dec4 = self.upconv4(bottleneck)
         dec4 = torch.cat((dec4, enc4), dim=1)
@@ -72,7 +72,8 @@ class UNetXY_V1(UNet):
         dec1 = self.upconv1(dec2)
         dec1 = torch.cat((dec1, enc1), dim=1)
         dec1 = self.decoder1(dec1)
-        map = torch.sigmoid(self.conv(dec1))
+        map = torch.sigmoid(self.conv_map(dec1))
+        tx_loc = torch.sigmoid(self.conv_tx(dec1))
         return map, tx_loc
 
     
@@ -86,8 +87,20 @@ class UNetXY_V1(UNet):
             t_y_point_pred = t_y_point_pred.to(torch.float32)
             tx_loc_pred = tx_loc_pred.to(torch.float32)
 
-            rec_loss_ = torch.nn.functional.mse_loss(t_y_point_pred * t_y_mask, t_y_point * t_y_mask).to(torch.float32)
-            loc_loss_ = torch.nn.functional.mse_loss(tx_loc_pred, tx_loc).to(torch.float32)
+            # Transform tx_loc into one-hot maps
+            batch_ = torch.arange(0,tx_loc_pred.shape[0]).to(torch.int)
+            channels_ = torch.zeros(tx_loc_pred.shape[0]).to(torch.int)
+            x_coord = torch.round(tx_loc[:,0] * tx_loc_pred.shape[-1]).detach().to(torch.int)
+            y_coord = torch.round(-tx_loc[:,1] * tx_loc_pred.shape[-2]).detach().to(torch.int) - 1 # -1 to account for the fact that counting from top starts at 0 but counting from bottom starts from -1 (instead of -0)
+            tx_loc_map = torch.zeros_like(tx_loc_pred).to(device)
+            tx_loc_map[batch_, channels_, y_coord, x_coord] = 1
+
+            # Weight positive instances in loss by the total number of pixels divided by the number of transmitters
+            tx_ratio = torch.numel(tx_loc_map) // tx_loc_map.sum()
+
+            rec_loss_ = nn.functional.mse_loss(t_y_point_pred * t_y_mask, t_y_point * t_y_mask).to(torch.float32)
+            loc_loss_ = torch.nn.functional.binary_cross_entropy_with_logits(
+                tx_loc_pred, tx_loc_map, pos_weight=tx_ratio).to(torch.float32)
 
             loss_ = w_rec * rec_loss_ + w_loc * loc_loss_
             
