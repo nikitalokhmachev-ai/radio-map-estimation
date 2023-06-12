@@ -108,7 +108,7 @@ class UNet(nn.Module):
 
             t_y_point_pred = self.forward(t_x_point).to(torch.float32)
 
-            loss_ = torch.nn.functional.mse_loss(t_y_point * t_y_mask, t_y_point_pred * t_y_mask).to(torch.float32)
+            loss_ = nn.functional.mse_loss(t_y_point * t_y_mask, t_y_point_pred * t_y_mask).to(torch.float32)
             
             if train:
                 loss_.backward()
