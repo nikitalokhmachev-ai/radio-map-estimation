@@ -138,7 +138,7 @@ class UNetXY_V1(UNet):
 
             test_running_loss, test_rec_running_loss, test_loc_running_loss = 0.0, 0.0, 0.0
             for i, batch in enumerate(test_dl):
-                loss_, rec_loss_, loc_loss_ = self.step(batch, optimizer, train=False)
+                loss_, rec_loss_, loc_loss_ = self.step(batch, optimizer, w_rec=w_rec, w_loc=w_loc, train=False)
                 test_running_loss += loss_.detach().item()
                 test_rec_running_loss += rec_loss_.detach().item()
                 test_loc_running_loss += loc_loss_.detach().item()
