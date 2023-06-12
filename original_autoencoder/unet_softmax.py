@@ -95,8 +95,7 @@ class UNetSoftmax_V2(UNet):
             tx_loc_map = torch.zeros_like(tx_loc_pred).to(device)
             tx_loc_map[batch_, channels_, y_coord, x_coord] = 1
 
-            # Weight positive instances in loss by the total number of pixels divided by the number of transmitters
-            tx_ratio = torch.numel(tx_loc_map) // tx_loc_map.sum()
+            return tx_loc_pred, tx_loc_map
 
             rec_loss_ = nn.functional.mse_loss(t_y_point_pred * t_y_mask, t_y_point * t_y_mask).to(torch.float32)
             loc_loss_ = nn.functional.cross_entropy(tx_loc_pred.flatten(1), tx_loc_map.flatten(1)).to(torch.float32)
