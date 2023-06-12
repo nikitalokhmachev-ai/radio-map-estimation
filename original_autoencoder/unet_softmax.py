@@ -9,8 +9,8 @@ from unet import UNet
 
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
-# UNetBCE_V2 is named to match TLPResUNetBCE_V2, but V1 is not implemented for UNetBCE
-class UNetBCE_V2(UNet):
+# UNetSoftmax_V2 is named to match TLPResUNetSoftmax_V2, but V1 is not implemented for UNetSoftmax
+class UNetSoftmax_V2(UNet):
 
     def __init__(self, in_channels=3, out_channels=1, init_features=32):
         super(UNet, self).__init__()
