@@ -99,7 +99,7 @@ class UNetBCE_V2(UNet):
             tx_ratio = torch.numel(tx_loc_map) // tx_loc_map.sum()
 
             rec_loss_ = nn.functional.mse_loss(t_y_point_pred * t_y_mask, t_y_point * t_y_mask).to(torch.float32)
-            loc_loss_ = nn.functional.binary_cross_entropy_with_logits(tx_loc_pred, tx_loc_map, pos_weight=tx_ratio).to(torch.float32)
+            loc_loss_ = nn.functional.cross_entropy(tx_loc_pred.flatten(1), tx_loc_map.flatten(1)).to(torch.float32)
 
             loss_ = w_rec * rec_loss_ + w_loc * loc_loss_
             
