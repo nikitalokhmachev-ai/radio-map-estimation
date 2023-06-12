@@ -11,8 +11,8 @@ device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
 
 class FocalLoss(nn.Module):
-    def init(self, gamma=2):
-        super(FocalLoss, self).init()
+    def __init__(self, gamma=2):
+        super(FocalLoss, self).__init__()
         self.gamma = gamma
 
     def forward(self, inputs, targets):
