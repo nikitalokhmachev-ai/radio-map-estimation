@@ -112,5 +112,4 @@ class Decoder(nn.Module):
         x = self.leaky_relu(self.conv2d_transpose_7(x))
         x = self.leaky_relu(self.conv2d_transpose_8(x))
         x = self.leaky_relu(self.conv2d_transpose_9(x))
-        x = torch.flatten(x, start_dim=1)
         return x
