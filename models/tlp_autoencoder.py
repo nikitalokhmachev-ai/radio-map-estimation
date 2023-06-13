@@ -111,8 +111,6 @@ class TLPAutoencoder(torch.nn.Module):
                 train_rec_loss = rec_running_loss/(i+1)
                 train_loc_loss = loc_running_loss/(i+1)
                 print(f'{loss}, [{epoch + 1}, {i + 1:5d}] loss: {train_loss}, reconstruction_loss: {train_rec_loss}, location_loss: {train_loc_loss}')
-            
-            wandb.log({'train_loss': train_loss, 'train_reconstruction_loss': train_rec_loss, 'train_location_loss':train_loc_loss})
         
             if (epoch + 1) % save_model_epochs == 0 or epoch == epochs - 1:
                 if not os.path.exists(save_model_dir):
@@ -131,7 +129,8 @@ class TLPAutoencoder(torch.nn.Module):
                 test_loc_loss = loc_running_loss/(i+1)
                 print(f'{loss}, [{epoch + 1}, {i + 1:5d}] loss: {test_loss}, reconstruction_loss: {test_rec_loss}, location_loss: {test_loc_loss}')
                 
-            wandb.log({'test_loss': test_loss, 'test_reconstruction_loss': test_rec_loss, 'test_location_loss':test_loc_loss})
+            wandb.log({'train_loss': train_rec_loss, 'train_location_loss':train_loc_loss, 'train_combined_loss': train_loss,
+                       'test_loss': test_rec_loss, 'test_location_loss':test_loc_loss, 'test_combined_loss': test_loss})
 
 
     def evaluate(self, test_dl, scaler, dB_max=-47.84, dB_min=-147, no_scale=False):

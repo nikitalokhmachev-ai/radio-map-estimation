@@ -3,6 +3,7 @@ from .resnet import Encoder as ResnetEncoder, Decoder as ResnetDecoder
 from .unet import Encoder as UNetEncoder, Decoder as UNetDecoder
 from .res_unet import Encoder as ResUNetEncoder, Decoder as ResUNetDecoder
 from .res_unet_concat import Encoder as ResUNetConcatEncoder, Decoder as ResUNetConcatDecoder
+from .tlp_unet_xy_v1 import Encoder as TLPUNetEncoderXY_V1, Decoder as TLPUNetDecoderXY_V1
 from .tlp_resunet_xy_v1 import Encoder as TLPResUNetEncoderXY_V1, Decoder as TLPResUNetDecoderXY_V1
 from .tlp_resunet_bce_v1 import Encoder as TLPResUNetEncoderBCE_V1, Decoder as TLPResUNetDecoderBCE_V1
 from .tlp_resunet_bce_v2 import Encoder as TLPResUNetEncoderBCE_V2, Decoder as TLPResUNetDecoderBCE_V2
@@ -197,6 +198,19 @@ class UNetAutoencoder_SeparateMasks(UNetAutoencoder):
                     print(f'{np.sqrt(np.mean(loss))}')
                     
             return torch.sqrt(torch.Tensor(losses).mean())
+
+
+class TLPUNetAutoencoderXY_V1(TLPAutoencoder):
+    def __init__(self, enc_in=2, enc_out=4, dec_out=1, n_dim=27, xy_features=8, leaky_relu_alpha=0.3):
+        super().__init__()
+        self.encoder = TLPUNetEncoderXY_V1(enc_in, enc_out, n_dim, xy_features, leaky_relu_alpha)
+        self.decoder = TLPUNetDecoderXY_V1(enc_out, dec_out, n_dim, leaky_relu_alpha)
+        self.loc_loss_func = 'mse'
+
+    def forward(self, x):
+        x, tx_loc, skip1, skip2, skip3 = self.encoder(x)
+        x = self.decoder(x, skip1, skip2, skip3)
+        return x, tx_loc
 
 
 class TLPResUNetAutoencoderXY_V1(TLPAutoencoder):
