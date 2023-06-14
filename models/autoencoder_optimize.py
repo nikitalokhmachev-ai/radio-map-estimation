@@ -16,7 +16,7 @@ class Autoencoder_Optimize(torch.nn.Module):
         x = self.decoder(x)
         return x
         
-    def fit(self, train_dl, optimizer, scheduler=None, epochs=100, loss='mse'):
+    def fit(self, train_dl, optimizer, epochs=100, loss='mse'):
         for epoch in range(epochs):
             running_loss = 0.0
             for i, data in enumerate(train_dl):
@@ -97,7 +97,11 @@ class Autoencoder_Optimize(torch.nn.Module):
                     title="Test Loss",
                     text=f"Test Loss on epochs {epoch} equal to {train_loss}"                   
                 )
-            wandb.log({'train_loss': train_loss, 'test_loss': test_loss})
+            if scheduler:
+                scheduler.step()
+                wandb.log({'train_loss': train_loss, 'test_loss': test_loss, 'learning_rate': scheduler.get_last_lr()[0]})
+            else:
+                wandb.log({'train_loss': train_loss, 'test_loss': test_loss})
             if (epoch + 1) % save_model_epochs == 0 or epoch == epochs - 1:
                 if not os.path.exists(save_model_dir):
                     os.makedirs(save_model_dir)
