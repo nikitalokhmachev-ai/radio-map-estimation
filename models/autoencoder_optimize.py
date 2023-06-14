@@ -72,9 +72,9 @@ class Autoencoder_Optimize(torch.nn.Module):
         dB = value * range_dB + dB_min
         return dB
     
-    def wandb_alart(self, project_name, run_name):
+    def wandb_alert(self, project_name, run_name):
         import wandb
-        wandb.init(project_name=project_name, name=run_name)
+        wandb.init(project=project_name, name=run_name)
         wandb.alert(
             title="Test Alert", 
             text="Is this working?"
