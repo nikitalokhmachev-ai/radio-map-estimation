@@ -47,6 +47,7 @@ from .unet_concat_map_mask import Encoder as UNetConcatMapMaskEncoder, Decoder a
 from .unet_concat_input import Encoder as UNetConcatInputEncoder, Decoder as UNetConcatInputDecoder
 from .unet_dual_encoder import Encoder as UNetDualEncoder
 from .autoencoder import Autoencoder
+from .autoencoder_optimize import Autoencoder_Optimize
 from .tlp_autoencoder import TLPAutoencoder, TLP_BCE_Test
 
 import os
@@ -54,6 +55,18 @@ import torch
 import numpy as np
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
+
+class UNet_Optimize(Autoencoder_Optimize):
+    def __init__(self, enc_in=2, enc_out=4, dec_out=1, n_dim=27, leaky_relu_alpha=0.3):
+        super().__init__()
+
+        self.encoder = UNetEncoder(enc_in, enc_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
+        self.decoder = UNetDecoder(enc_out, dec_out, n_dim, leaky_relu_alpha=leaky_relu_alpha)
+
+    def forward(self, x):
+        x, skip1, skip2, skip3 = self.encoder(x)
+        x = self.decoder(x, skip1, skip2, skip3)
+        return x
 
 # Base Autoencoder
 class BaseAutoencoder(Autoencoder):
