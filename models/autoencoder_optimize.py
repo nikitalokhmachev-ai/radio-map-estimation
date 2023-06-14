@@ -16,7 +16,7 @@ class Autoencoder_Optimize(torch.nn.Module):
         x = self.decoder(x)
         return x
         
-    def fit(self, train_dl, optimizer, epochs=100, loss='mse'):
+    def fit(self, train_dl, optimizer, scheduler=None, epochs=100, loss='mse'):
         for epoch in range(epochs):
             running_loss = 0.0
             for i, data in enumerate(train_dl):
@@ -80,13 +80,23 @@ class Autoencoder_Optimize(torch.nn.Module):
             text="Is this working?"
             )
 
-    def fit_wandb(self, train_dl, test_dl, scaler, optimizer, project_name, run_name, epochs=100, save_model_epochs=25, save_model_dir='/content', loss='mse'):
+    def fit_wandb(self, train_dl, test_dl, scaler, optimizer, scheduler, project_name, run_name, epochs=100, save_model_epochs=25, save_model_dir='/content', loss='mse'):
         import wandb
         wandb.init(project=project_name, name=run_name)
 
         for epoch in range(epochs):
-            train_loss = self.fit(train_dl, optimizer, epochs=1, loss=loss)
+            train_loss = self.fit(train_dl, optimizer, scheduler, epochs=1, loss=loss)
+            if train_loss > 2:
+                wandb.alert(
+                    title="Train Loss",
+                    text=f"Train Loss on epochs {epoch} equal to {train_loss}"
+                )
             test_loss = self.evaluate(test_dl, scaler, no_scale=True)
+            if test_loss > 2:
+                wandb.alert(
+                    title="Test Loss",
+                    text=f"Test Loss on epochs {epoch} equal to {train_loss}"                   
+                )
             wandb.log({'train_loss': train_loss, 'test_loss': test_loss})
             if (epoch + 1) % save_model_epochs == 0 or epoch == epochs - 1:
                 if not os.path.exists(save_model_dir):
