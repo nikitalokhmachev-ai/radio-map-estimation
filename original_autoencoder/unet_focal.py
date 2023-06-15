@@ -215,7 +215,7 @@ class UNetFocal_V2(UNet):
 
 
 # This model splits off the Map Reconstruction and Transmitter Localization Heads at the Latent Space / Beginning of Decoder
-class UNetFocal_V3(UNet):
+class UNetFocal_V3(UNetFocal_V2):
 
     def __init__(self, in_channels=3, out_channels=1, init_features=32):
         super(UNet, self).__init__()
