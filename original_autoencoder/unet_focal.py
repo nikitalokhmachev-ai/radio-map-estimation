@@ -211,3 +211,86 @@ class UNetFocal_V2(UNet):
 
     def save_model(self, out_path):
         torch.save(self, out_path)
+
+
+
+# This model splits off the Map Reconstruction and Transmitter Localization Heads at the Latent Space / Beginning of Decoder
+class UNetFocal_V3(UNet):
+
+    def __init__(self, in_channels=3, out_channels=1, init_features=32):
+        super(UNet, self).__init__()
+
+        features = init_features
+        self.encoder1 = UNet._block(in_channels, features, name="enc1")
+        self.pool1 = nn.MaxPool2d(kernel_size=2, stride=2)
+        self.encoder2 = UNet._block(features, features * 2, name="enc2")
+        self.pool2 = nn.MaxPool2d(kernel_size=2, stride=2)
+        self.encoder3 = UNet._block(features * 2, features * 4, name="enc3")
+        self.pool3 = nn.MaxPool2d(kernel_size=2, stride=2)
+        self.encoder4 = UNet._block(features * 4, features * 8, name="enc4")
+        self.pool4 = nn.MaxPool2d(kernel_size=2, stride=2)
+
+        self.bottleneck = UNet._block(features * 8, features * 16, name="bottleneck")
+
+        # Signal Map Deconvolution
+        self.upconv4_map = nn.ConvTranspose2d(features * 16, features * 8, kernel_size=2, stride=2)
+        self.decoder4_map = UNet._block((features * 8) * 2, features * 8, name="dec4_map")
+        self.upconv3_map = nn.ConvTranspose2d(features * 8, features * 4, kernel_size=2, stride=2)
+        self.decoder3_map = UNet._block((features * 4) * 2, features * 4, name="dec3_map")
+        self.upconv2_map = nn.ConvTranspose2d(features * 4, features * 2, kernel_size=2, stride=2)
+        self.decoder2_map = UNet._block((features * 2) * 2, features * 2, name="dec2_map")
+        self.upconv1_map = nn.ConvTranspose2d(features * 2, features, kernel_size=2, stride=2)
+        self.decoder1_map = UNet._block(features * 2, features, name="dec1_map")
+        self.conv_map = nn.Conv2d(in_channels=features, out_channels=out_channels, kernel_size=1)
+
+
+        # Transmitter Location Deconvolution
+        self.upconv4_tx = nn.ConvTranspose2d(features * 16, features * 8, kernel_size=2, stride=2)
+        self.decoder4_tx = UNet._block((features * 8) * 2, features * 8, name="dec4_tx")
+        self.upconv3_tx = nn.ConvTranspose2d(features * 8, features * 4, kernel_size=2, stride=2)
+        self.decoder3_tx = UNet._block((features * 4) * 2, features * 4, name="dec3_tx")
+        self.upconv2_tx = nn.ConvTranspose2d(features * 4, features * 2, kernel_size=2, stride=2)
+        self.decoder2_tx = UNet._block((features * 2) * 2, features * 2, name="dec2_tx")
+        self.upconv1_tx = nn.ConvTranspose2d(features * 2, features, kernel_size=2, stride=2)
+        self.decoder1_tx = UNet._block(features * 2, features, name="dec1_tx")
+        self.conv_tx = nn.Conv2d(in_channels=features, out_channels=out_channels, kernel_size=1)
+
+        self.focal_loss = FocalLoss(gamma=2)
+
+    def forward(self, x):
+        enc1 = self.encoder1(x)
+        enc2 = self.encoder2(self.pool1(enc1))
+        enc3 = self.encoder3(self.pool2(enc2))
+        enc4 = self.encoder4(self.pool3(enc3))
+
+        bottleneck = self.bottleneck(self.pool4(enc4))
+
+        dec4_map = self.upconv4_map(bottleneck)
+        dec4_map = torch.cat((dec4_map, enc4), dim=1)
+        dec4_map = self.decoder4_map(dec4_map)
+        dec3_map = self.upconv3_map(dec4_map)
+        dec3_map = torch.cat((dec3_map, enc3), dim=1)
+        dec3_map = self.decoder3_map(dec3_map)
+        dec2_map = self.upconv2_map(dec3_map)
+        dec2_map = torch.cat((dec2_map, enc2), dim=1)
+        dec2_map = self.decoder2_map(dec2_map)
+        dec1_map = self.upconv1_map(dec2_map)
+        dec1_map = torch.cat((dec1_map, enc1), dim=1)
+        dec1_map = self.decoder1_map(dec1_map)
+        map = torch.sigmoid(self.conv_map(dec1_map))
+
+        dec4_tx = self.upconv4_tx(bottleneck)
+        dec4_tx = torch.cat((dec4_tx, enc4), dim=1)
+        dec4_tx = self.decoder4_tx(dec4_tx)
+        dec3_tx = self.upconv3_tx(dec4_tx)
+        dec3_tx = torch.cat((dec3_tx, enc3), dim=1)
+        dec3_tx = self.decoder3_tx(dec3_tx)
+        dec2_tx = self.upconv2_tx(dec3_tx)
+        dec2_tx = torch.cat((dec2_tx, enc2), dim=1)
+        dec2_tx = self.decoder2_tx(dec2_tx)
+        dec1_tx = self.upconv1_tx(dec2_tx)
+        dec1_tx = torch.cat((dec1_tx, enc1), dim=1)
+        dec1_tx = self.decoder1_tx(dec1_tx)
+        tx_loc = self.conv_tx(dec1_tx)
+
+        return map, tx_loc
