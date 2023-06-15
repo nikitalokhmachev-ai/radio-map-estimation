@@ -73,13 +73,15 @@ class Autoencoder(torch.nn.Module):
         return dB
     
         
-    def fit_wandb(self, train_dl, test_dl, scaler, optimizer, project_name, run_name, epochs=100, save_model_epochs=25, save_model_dir='/content', loss='mse'):
+    def fit_wandb(self, train_dl, test_dl, scaler, optimizer, scheduler, project_name, run_name, epochs=100, save_model_epochs=25, save_model_dir='/content', loss='mse'):
         import wandb
         wandb.init(project=project_name, name=run_name)
         for epoch in range(epochs):
             train_loss = self.fit(train_dl, optimizer, epochs=1, loss=loss)
             test_loss = self.evaluate(test_dl, scaler, no_scale=True)
             wandb.log({'train_loss': train_loss, 'test_loss': test_loss})
+            if scheduler:
+                scheduler.step()
 
             if (epoch + 1) % save_model_epochs == 0 or epoch == epochs - 1:
                 if not os.path.exists(save_model_dir):
