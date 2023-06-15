@@ -97,7 +97,7 @@ class TLPAutoencoder(torch.nn.Module):
 
         return running_loss / (i+1)
     
-    def fit_wandb(self, train_dl, test_dl, optimizer, project_name, run_name, w_rec, w_loc, epochs=100, save_model_epochs=25, save_model_dir='/content'):
+    def fit_wandb(self, train_dl, test_dl, optimizer, scheduler, project_name, run_name, w_rec, w_loc, epochs=100, save_model_epochs=25, save_model_dir='/content'):
         import wandb
         wandb.init(project=project_name, name=run_name)
         for epoch in range(epochs):
@@ -131,6 +131,9 @@ class TLPAutoencoder(torch.nn.Module):
                 
             wandb.log({'train_loss': train_rec_loss, 'train_location_loss':train_loc_loss, 'train_combined_loss': train_loss,
                        'test_loss': test_rec_loss, 'test_location_loss':test_loc_loss, 'test_combined_loss': test_loss})
+            
+            if scheduler:
+                scheduler.step()
 
 
     def evaluate(self, test_dl, scaler, dB_max=-47.84, dB_min=-147, no_scale=False):
