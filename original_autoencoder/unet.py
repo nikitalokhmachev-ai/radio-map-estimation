@@ -202,11 +202,11 @@ class UNet(nn.Module):
 
 class UNet_V2(UNet):
     '''
-    This UNet is the most like the PIMRC model. It changes Upsampling to ConvTranspose2d, LeakyRelu to Relu, adds
-    BatchNorm in the Convolution Blocks, adds a single 1x1 Convolution on the last layer to get the right output shape,
-    and changes the final activation from LeakyRelu to Sigmoid. It also changes the dimensionality of the first decoder
-    layer, going from latent_channels to features instead of latent_channels to latent_channels (this is just something
-    that bothers me in the PIMRC UNet design).
+    This UNet is the most like the PIMRC model. It changes Upsampling to ConvTranspose2d, LeakyRelu to Relu (or Sigmoid), 
+    in the last layer), adds BatchNorm in the Convolution Blocks, adds a single 1x1 Convolution on the last layer to get
+    the right output shape, and changes the dimensionality of the first decoder block to go from latent_channels to features
+    instead of latent_channels to latent_channels. It adds roughly 20,000 weights (mostly due to the addition of the Conv
+    Transpose2d layers), but this is still smaller than ResUNetConcat. 
 
     These are variables we don't plan to change / experiment with, so we're checking first to see if they meaningfully
     impact performance when the variables we do mean to change (number of filters at each layer, latent space size) are
@@ -217,7 +217,7 @@ class UNet_V2(UNet):
     '''
 
     def __init__(self, in_channels=2, latent_channels=4, out_channels=1, features=27):
-        super(UNet, self).__init__()
+        super().__init__()
 
         self.encoder1 = UNet_V2._block(in_channels, features, name="enc1")
         self.pool1 = nn.AvgPool2d(kernel_size=2, stride=2)
@@ -302,3 +302,4 @@ class UNet_V2(UNet):
                 ]
             )
         )
+    
