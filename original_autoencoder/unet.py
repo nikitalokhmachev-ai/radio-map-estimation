@@ -225,11 +225,11 @@ class UNet_V2(UNet):
         self.pool2 = nn.AvgPool2d(kernel_size=2, stride=2)
         self.encoder3 = UNet._block(features, features, name="enc3")
         self.pool3 = nn.AvgPool2d(kernel_size=2, stride=2)
-        self.encoder4 = nn.Conv2d(features, latent_channels, name="enc4")
+        self.encoder4 = nn.Conv2d(features, latent_channels)
         # encoder4 (a single Convolution Layer) takes the place of "bottleneck" but serves same purpose
 
         # convolve once (with a single Convolution Layer) before upsampling / deconvoluting
-        self.decoder4 = nn.Conv2d(latent_channels, features, name="dec4")
+        self.decoder4 = nn.Conv2d(latent_channels, features)
         self.upconv3 = nn.ConvTranspose2d(features, features, kernel_size=2, stride=2)
         self.decoder3 = UNet._block((features) * 2, features, name="dec3")
         self.upconv2 = nn.ConvTranspose2d(features, features, kernel_size=2, stride=2)
