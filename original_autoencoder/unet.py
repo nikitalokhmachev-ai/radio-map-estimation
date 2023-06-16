@@ -359,12 +359,22 @@ class UNet_V2(nn.Module):
                 filepath = os.path.join(save_model_dir, f'epoch_{epoch}.pth')
                 self.save_model(filepath)
 
+            if train_loss > 2:
+                wandb.alert(
+                    title="Train Loss",
+                    text=f"Train Loss on epochs {epoch} equal to {train_loss}")
+
             test_running_loss = 0.0
             for i, batch in enumerate(test_dl):
                 loss = self.step(batch, optimizer, train=False)
                 test_running_loss += loss.detach().item()
                 test_loss = test_running_loss/(i+1)
                 print(f'{loss}, [{epoch + 1}, {i + 1:5d}] loss: {test_loss}')
+
+            if test_loss > 2:
+                wandb.alert(
+                    title="Test Loss",
+                    text=f"Test Loss on epochs {epoch} equal to {train_loss}")
                 
             wandb.log({'train_loss': train_loss, 'test_loss': test_loss})
 
