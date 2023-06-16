@@ -202,23 +202,29 @@ class UNet(nn.Module):
 
 class UNet_V2(UNet):
     '''
-    This UNet is the most like the PIMRC model. It only changes Upsampling to ConvTranspose2d, LeakyRelu to Relu, adds
-    BatchNorm in the Convolution Blocks, and adds a single 1x1 Convolution on the last layer to get the right output shape.  
-    This is to check  that we can actually get the same performance out of a model if using basically the same architecture 
-    (i.e. that the changes listed above, or some smaller change we missed, don't significantly impact performance).
+    This UNet is the most like the PIMRC model. It changes Upsampling to ConvTranspose2d, LeakyRelu to Relu, adds
+    BatchNorm in the Convolution Blocks, adds a single 1x1 Convolution on the last layer to get the right output shape,
+    and changes the final activation from LeakyRelu to Sigmoid. It also changes the dimensionality of the first decoder
+    layer, going from latent_channels to features instead of latent_channels to latent_channels (this is just something
+    that bothers me in the PIMRC UNet design).
 
-    We also change the UNet._block so that it includes 3 Convolutions (like the PIMRC UNet) and includes a Bias term.
+    These are variables we don't plan to change / experiment with, so we're checking first to see if they meaningfully
+    impact performance when the variables we do mean to change (number of filters at each layer, latent space size) are
+    still the same as in the PIMRC UNet.
+
+    We also change the UNet._block so that it includes 3 Convolutions (like the PIMRC UNet) and includes a Bias term, and
+    change MaxPool2d to AvgPool2d, again to match PIMRC.
     '''
 
-    def __init__(self, in_channels=2, latent_channels=4, out_channels=1, features=32):
+    def __init__(self, in_channels=2, latent_channels=4, out_channels=1, features=27):
         super(UNet, self).__init__()
 
         self.encoder1 = UNet._block(in_channels, features, name="enc1")
-        self.pool1 = nn.MaxPool2d(kernel_size=2, stride=2)
+        self.pool1 = nn.AvgPool2d(kernel_size=2, stride=2)
         self.encoder2 = UNet._block(features, features, name="enc2")
-        self.pool2 = nn.MaxPool2d(kernel_size=2, stride=2)
+        self.pool2 = nn.AvgPool2d(kernel_size=2, stride=2)
         self.encoder3 = UNet._block(features, features, name="enc3")
-        self.pool3 = nn.MaxPool2d(kernel_size=2, stride=2)
+        self.pool3 = nn.AvgPool2d(kernel_size=2, stride=2)
         self.encoder4 = nn.Conv2d(features, latent_channels, name="enc4")
         # encoder4 (a single Convolution Layer) takes the place of "bottleneck" but serves same purpose
 
