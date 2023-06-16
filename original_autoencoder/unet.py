@@ -217,6 +217,8 @@ class UNet_V2(UNet):
     '''
 
     def __init__(self, in_channels=2, latent_channels=4, out_channels=1, features=27):
+        # TODO: Figure out the best way to call super().__init__() here. Since we don't strictly need to initialize UNet,
+        # I think we could probably call super(UNet, self).__init__() to just initialize UNet's parent, i.e. nn.Module
         super().__init__()
 
         self.encoder1 = UNet_V2._block(in_channels, features, name="enc1")
