@@ -242,7 +242,8 @@ class UNet_V2_XY_V1(nn.Module):
         dec1 = self.upconv1(dec2)
         dec1 = torch.cat((dec1, enc1), dim=1)
         dec1 = self.decoder1(dec1)
-        return torch.sigmoid(self.conv(dec1))
+        map = torch.sigmoid(self.conv(dec1))
+        return map, tx_loc
 
     @staticmethod
     def _block(in_channels, features, name):
