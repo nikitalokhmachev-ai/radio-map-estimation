@@ -219,11 +219,11 @@ class UNet_V2(UNet):
     def __init__(self, in_channels=2, latent_channels=4, out_channels=1, features=27):
         super(UNet, self).__init__()
 
-        self.encoder1 = UNet._block(in_channels, features, name="enc1")
+        self.encoder1 = UNet_V2._block(in_channels, features, name="enc1")
         self.pool1 = nn.AvgPool2d(kernel_size=2, stride=2)
-        self.encoder2 = UNet._block(features, features, name="enc2")
+        self.encoder2 = UNet_V2._block(features, features, name="enc2")
         self.pool2 = nn.AvgPool2d(kernel_size=2, stride=2)
-        self.encoder3 = UNet._block(features, features, name="enc3")
+        self.encoder3 = UNet_V2._block(features, features, name="enc3")
         self.pool3 = nn.AvgPool2d(kernel_size=2, stride=2)
         self.encoder4 = nn.Conv2d(features, latent_channels, kernel_size=3, padding=1)
         # encoder4 (a single Convolution Layer) takes the place of "bottleneck" but serves same purpose
@@ -231,11 +231,11 @@ class UNet_V2(UNet):
         # convolve once (with a single Convolution Layer) before upsampling / deconvoluting
         self.decoder4 = nn.Conv2d(latent_channels, features, kernel_size=3, padding=1)
         self.upconv3 = nn.ConvTranspose2d(features, features, kernel_size=2, stride=2)
-        self.decoder3 = UNet._block((features) * 2, features, name="dec3")
+        self.decoder3 = UNet_V2._block((features) * 2, features, name="dec3")
         self.upconv2 = nn.ConvTranspose2d(features, features, kernel_size=2, stride=2)
-        self.decoder2 = UNet._block((features) * 2, features, name="dec2")
+        self.decoder2 = UNet_V2._block((features) * 2, features, name="dec2")
         self.upconv1 = nn.ConvTranspose2d(features, features, kernel_size=2, stride=2)
-        self.decoder1 = UNet._block(features * 2, features, name="dec1")
+        self.decoder1 = UNet_V2._block(features * 2, features, name="dec1")
 
         # Here is one extra 1x1 Convolution to change the output into the right shape
         self.conv = nn.Conv2d(in_channels=features, out_channels=out_channels, kernel_size=1)
