@@ -555,3 +555,32 @@ class UNet_V3_Focal_V5(UNetFocal_V2):
                 optimizer.zero_grad()
 
         return loss_, rec_loss_, loc_loss_
+    
+
+    def evaluate(self, test_dl, scaler, dB_max=-47.84, dB_min=-147, no_scale=False):
+        losses = []
+        with torch.no_grad():
+            for i, data in enumerate(test_dl):
+                    t_x_point, t_y_point, t_y_mask, t_channel_pow, file_path, j = data
+                    t_x_point, t_y_point, t_y_mask = t_x_point.to(torch.float32).to(device), t_y_point.flatten(1).to(device), t_y_mask.flatten(1).to(device)
+                    t_channel_pow = t_channel_pow.flatten(1).to(device).detach().cpu().numpy()
+                    output = self.forward(t_x_point)
+                    t_y_point_pred = output[:,0].unsqueeze(1).flatten(1).detach().cpu().numpy()
+                    building_mask = (t_x_point[:,1,:,:].flatten(1) == -1).to(torch.float32).detach().cpu().numpy()
+                    if scaler:
+                        loss = (np.linalg.norm(
+                            (1 - building_mask) * (scaler.reverse_transform(t_channel_pow) - scaler.reverse_transform(t_y_point_pred)), axis=1) ** 2 
+                            / np.sum(building_mask == 0, axis=1)).tolist()
+                    else:
+                        if no_scale==True:
+                            loss = (np.linalg.norm(
+                                (1 - building_mask) * (t_channel_pow - t_y_point_pred), axis=1) ** 2 
+                                / np.sum(building_mask == 0, axis=1)).tolist()
+                        else:
+                            loss = (np.linalg.norm(
+                                (1 - building_mask) * (self.scale_to_dB(t_channel_pow, dB_max, dB_min) - self.scale_to_dB(t_y_point_pred, dB_max, dB_min)), axis=1) ** 2 
+                                / np.sum(building_mask == 0, axis=1)).tolist()
+                    losses += loss
+                    print(f'{np.sqrt(np.mean(loss))}')
+                    
+            return torch.sqrt(torch.Tensor(losses).mean())
