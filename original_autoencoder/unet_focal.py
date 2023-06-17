@@ -334,7 +334,7 @@ class UNet_V3_Focal_V2(UNetFocal_V2):
         enc2 = self.encoder2(self.pool1(enc1))
         enc3 = self.encoder3(self.pool2(enc2))
 
-        bottleneck = self.bottleneck(self.pool(enc3))
+        bottleneck = self.bottleneck(self.pool3(enc3))
 
         dec3 = self.upconv3(bottleneck)
         dec3 = torch.cat((dec3, enc3), dim=1)
@@ -392,7 +392,7 @@ class UNet_V3_Focal_V3(UNetFocal_V2):
         enc2 = self.encoder2(self.pool1(enc1))
         enc3 = self.encoder3(self.pool2(enc2))
 
-        bottleneck = self.bottleneck(self.pool(enc3))
+        bottleneck = self.bottleneck(self.pool3(enc3))
 
         dec3_map = self.upconv3_map(bottleneck)
         dec3_map = torch.cat((dec3_map, enc3), dim=1)
@@ -457,7 +457,7 @@ class UNet_V3_Focal_V4(UNetFocal_V2):
         enc2 = self.encoder2(self.pool1(enc1))
         enc3 = self.encoder3(self.pool2(enc2))
 
-        bottleneck = self.bottleneck(self.pool(enc3))
+        bottleneck = self.bottleneck(self.pool3(enc3))
 
         dec3 = self.upconv3(bottleneck)
         dec3 = torch.cat((dec3, enc3), dim=1)
@@ -512,7 +512,7 @@ class UNet_V3_Focal_V5(UNetFocal_V2):
         enc2 = self.encoder2(self.pool1(enc1))
         enc3 = self.encoder3(self.pool2(enc2))
 
-        bottleneck = self.bottleneck(self.pool(enc3))
+        bottleneck = self.bottleneck(self.pool3(enc3))
 
         dec3 = self.upconv3(bottleneck)
         dec3 = torch.cat((dec3, enc3), dim=1)
