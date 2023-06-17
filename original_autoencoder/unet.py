@@ -222,26 +222,29 @@ class UNet_V2(UNet):
         parameters I don't need) and just initializing UNet's superclass, nn.Module. However this feels suspect'''
         super(UNet, self).__init__()
 
-        self.encoder1 = UNet_V2._block(in_channels, features, name="enc1")
+        if isinstance(features, int):
+            features = [features] * 3
+
+        self.encoder1 = UNet_V2._block(in_channels, features[0], name="enc1")
         self.pool1 = nn.AvgPool2d(kernel_size=2, stride=2)
-        self.encoder2 = UNet_V2._block(features, features, name="enc2")
+        self.encoder2 = UNet_V2._block(features[0], features[1], name="enc2")
         self.pool2 = nn.AvgPool2d(kernel_size=2, stride=2)
-        self.encoder3 = UNet_V2._block(features, features, name="enc3")
+        self.encoder3 = UNet_V2._block(features[1], features[2], name="enc3")
         self.pool3 = nn.AvgPool2d(kernel_size=2, stride=2)
-        self.encoder4 = nn.Conv2d(features, latent_channels, kernel_size=3, padding=1)
+        self.encoder4 = nn.Conv2d(features[2], latent_channels, kernel_size=3, padding=1)
         # encoder4 (a single Convolution Layer) takes the place of "bottleneck" but serves same purpose
 
         # convolve once (with a single Convolution Layer) before upsampling / deconvoluting
-        self.decoder4 = nn.Conv2d(latent_channels, features, kernel_size=3, padding=1)
-        self.upconv3 = nn.ConvTranspose2d(features, features, kernel_size=2, stride=2)
-        self.decoder3 = UNet_V2._block((features) * 2, features, name="dec3")
-        self.upconv2 = nn.ConvTranspose2d(features, features, kernel_size=2, stride=2)
-        self.decoder2 = UNet_V2._block((features) * 2, features, name="dec2")
-        self.upconv1 = nn.ConvTranspose2d(features, features, kernel_size=2, stride=2)
-        self.decoder1 = UNet_V2._block(features * 2, features, name="dec1")
+        self.decoder4 = nn.Conv2d(latent_channels, features[2], kernel_size=3, padding=1)
+        self.upconv3 = nn.ConvTranspose2d(features[2], features[2], kernel_size=2, stride=2)
+        self.decoder3 = UNet_V2._block((features[2]) * 2, features[1], name="dec3")
+        self.upconv2 = nn.ConvTranspose2d(features[1], features[1], kernel_size=2, stride=2)
+        self.decoder2 = UNet_V2._block((features[1]) * 2, features[0], name="dec2")
+        self.upconv1 = nn.ConvTranspose2d(features[0], features[0], kernel_size=2, stride=2)
+        self.decoder1 = UNet_V2._block(features[0] * 2, features[0], name="dec1")
 
         # Here is one extra 1x1 Convolution to change the output into the right shape
-        self.conv = nn.Conv2d(in_channels=features, out_channels=out_channels, kernel_size=1)
+        self.conv = nn.Conv2d(in_channels=features[0], out_channels=out_channels, kernel_size=1)
 
     def forward(self, x):
         enc1 = self.encoder1(x)
