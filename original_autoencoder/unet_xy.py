@@ -185,7 +185,7 @@ class UNet_V2_XY_V1(UNetXY_V1):
     '''Inherits from UNetXY_V1 for its methods, but architecture is copied from UNet_V2'''
 
     def __init__(self, in_channels=2, latent_channels=4, out_channels=1, features=27, xy_features=8):
-        super(UNet, self).__init__()
+        super(UNetXY_V1, self).__init__()
 
         self.encoder1 = UNet_V2._block(in_channels, features, name="enc1")
         self.pool1 = nn.AvgPool2d(kernel_size=2, stride=2)
@@ -222,6 +222,61 @@ class UNet_V2_XY_V1(UNetXY_V1):
 
         dec4 = self.decoder4(enc4)
         dec3 = self.upconv3(dec4)
+        dec3 = torch.cat((dec3, enc3), dim=1)
+        dec3 = self.decoder3(dec3)
+        dec2 = self.upconv2(dec3)
+        dec2 = torch.cat((dec2, enc2), dim=1)
+        dec2 = self.decoder2(dec2)
+        dec1 = self.upconv1(dec2)
+        dec1 = torch.cat((dec1, enc1), dim=1)
+        dec1 = self.decoder1(dec1)
+        map = torch.sigmoid(self.conv(dec1))
+        return map, tx_loc
+    
+
+
+class UNet_V3_XY_V1(UNetXY_V1):
+    '''Inherits from UNetXY_V1 for its methods, but architecture is copied from UNet_V3'''
+
+    def __init__(self, in_channels=2, latent_channels=64, out_channels=1, features=[32,32,64], xy_features=32):
+        # TODO: Figure out the best way to call super().__init__() here. 
+        super(UNetXY_V1, self).__init__()
+
+        if isinstance(features, int):
+            features = [features] * 3
+
+        # Use the same 3-layer blocks as UNet_V2
+        self.encoder1 = UNet_V2._block(in_channels, features[0], name="enc1")
+        self.pool1 = nn.AvgPool2d(kernel_size=2, stride=2)
+        self.encoder2 = UNet_V2._block(features[0], features[1], name="enc2")
+        self.pool2 = nn.AvgPool2d(kernel_size=2, stride=2)
+        self.encoder3 = UNet_V2._block(features[1], features[2], name="enc3")
+        self.pool3 = nn.AvgPool2d(kernel_size=2, stride=2)
+
+        self.bottleneck = UNet_V2._block(features[2], latent_channels, name='bottleneck')
+        self.xy_linear_1 = torch.nn.Linear(latent_channels, xy_features)
+        self.xy_linear_2 = torch.nn.Linear(xy_features, 2)
+
+        self.upconv3 = nn.ConvTranspose2d(latent_channels, features[2], kernel_size=2, stride=2)
+        self.decoder3 = UNet_V2._block(features[2] * 2, features[2], name="dec3")
+        self.upconv2 = nn.ConvTranspose2d(features[2], features[1], kernel_size=2, stride=2)
+        self.decoder2 = UNet_V2._block(features[1] * 2, features[1], name="dec2")
+        self.upconv1 = nn.ConvTranspose2d(features[1], features[0], kernel_size=2, stride=2)
+        self.decoder1 = UNet_V2._block(features[0] * 2, features[0], name="dec1")
+
+        # Here is one extra 1x1 Convolution to change the output into the right shape
+        self.conv = nn.Conv2d(in_channels=features[0], out_channels=out_channels, kernel_size=1)
+
+    def forward(self, x):
+        enc1 = self.encoder1(x)
+        enc2 = self.encoder2(self.pool1(enc1))
+        enc3 = self.encoder3(self.pool2(enc2))
+
+        bottleneck = self.bottleneck(self.pool(enc3))
+        tx_loc = nn.functional.silu(self.xy_linear_1(bottleneck.mean((2,3))))
+        tx_loc = torch.sigmoid(self.xy_linear_2(tx_loc))
+
+        dec3 = self.upconv3(bottleneck)
         dec3 = torch.cat((dec3, enc3), dim=1)
         dec3 = self.decoder3(dec3)
         dec2 = self.upconv2(dec3)

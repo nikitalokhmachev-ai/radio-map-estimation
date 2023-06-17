@@ -301,7 +301,7 @@ class UNet_V3(UNet):
     '''
     '''
 
-    def __init__(self, in_channels=2, latent_channels=128, out_channels=1, features=[32,32,64]):
+    def __init__(self, in_channels=2, latent_channels=64, out_channels=1, features=[32,32,64]):
         # TODO: Figure out the best way to call super().__init__() here. 
         super(UNet, self).__init__()
 
