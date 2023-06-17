@@ -305,6 +305,9 @@ class UNet_V3(UNet):
         # TODO: Figure out the best way to call super().__init__() here. 
         super(UNet, self).__init__()
 
+        if isinstance(features, int):
+            features = [features] * 3
+
         # Use the same 3-layer blocks as UNet_V2
         self.encoder1 = UNet_V2._block(in_channels, features[0], name="enc1")
         self.pool1 = nn.AvgPool2d(kernel_size=2, stride=2)
