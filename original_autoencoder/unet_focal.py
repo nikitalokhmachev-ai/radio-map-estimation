@@ -348,3 +348,69 @@ class UNet_V3_Focal_V2(UNetFocal_V2):
         map = torch.sigmoid(self.conv_map(dec1))
         tx_loc = self.conv_tx(dec1)
         return map, tx_loc
+    
+
+class UNet_V3_Focal_V3(UNetFocal_V2):
+    '''UNetFocal_V3 reimplemented for UNet_V3 architecture'''
+
+    def __init__(self, in_channels=2, latent_channels=64, out_channels=1, features=[32,32,64]):
+        super(UNetFocal_V2, self).__init__()
+
+        if isinstance(features, int):
+            features = [features] * 3
+
+        # Use the same 3-layer blocks as UNet_V2
+        self.encoder1 = UNet_V2._block(in_channels, features[0], name="enc1")
+        self.pool1 = nn.AvgPool2d(kernel_size=2, stride=2)
+        self.encoder2 = UNet_V2._block(features[0], features[1], name="enc2")
+        self.pool2 = nn.AvgPool2d(kernel_size=2, stride=2)
+        self.encoder3 = UNet_V2._block(features[1], features[2], name="enc3")
+        self.pool3 = nn.AvgPool2d(kernel_size=2, stride=2)
+
+        self.bottleneck = UNet_V2._block(features[2], latent_channels, name='bottleneck')
+
+        self.upconv3_map = nn.ConvTranspose2d(latent_channels, features[2], kernel_size=2, stride=2)
+        self.decoder3_map = UNet_V2._block(features[2] * 2, features[2], name="dec3")
+        self.upconv2_map = nn.ConvTranspose2d(features[2], features[1], kernel_size=2, stride=2)
+        self.decoder2_map = UNet_V2._block(features[1] * 2, features[1], name="dec2")
+        self.upconv1_map = nn.ConvTranspose2d(features[1], features[0], kernel_size=2, stride=2)
+        self.decoder1_map = UNet_V2._block(features[0] * 2, features[0], name="dec1")
+        self.conv_map = nn.Conv2d(in_channels=features[0], out_channels=out_channels, kernel_size=1)
+
+        self.upconv3_tx = nn.ConvTranspose2d(latent_channels, features[2], kernel_size=2, stride=2)
+        self.decoder3_tx = UNet_V2._block(features[2] * 2, features[2], name="dec3")
+        self.upconv2_tx = nn.ConvTranspose2d(features[2], features[1], kernel_size=2, stride=2)
+        self.decoder2_tx = UNet_V2._block(features[1] * 2, features[1], name="dec2")
+        self.upconv1_tx = nn.ConvTranspose2d(features[1], features[0], kernel_size=2, stride=2)
+        self.decoder1_tx = UNet_V2._block(features[0] * 2, features[0], name="dec1")
+        self.conv_tx = nn.Conv2d(in_channels=features[0], out_channels=out_channels, kernel_size=1)
+
+    def forward(self, x):
+        enc1 = self.encoder1(x)
+        enc2 = self.encoder2(self.pool1(enc1))
+        enc3 = self.encoder3(self.pool2(enc2))
+
+        bottleneck = self.bottleneck(self.pool(enc3))
+
+        dec3_map = self.upconv3_map(bottleneck)
+        dec3_map = torch.cat((dec3_map, enc3), dim=1)
+        dec3_map = self.decoder3_map(dec3_map)
+        dec2_map = self.upconv2_map(dec3_map)
+        dec2_map = torch.cat((dec2_map, enc2), dim=1)
+        dec2_map = self.decoder2_map(dec2_map)
+        dec1_map = self.upconv1_map(dec2_map)
+        dec1_map = torch.cat((dec1_map, enc1), dim=1)
+        dec1_map = self.decoder1_map(dec1_map)
+        map = torch.sigmoid(self.conv_map(dec1_map))
+
+        dec3_tx = self.upconv3_tx(bottleneck)
+        dec3_tx = torch.cat((dec3_tx, enc3), dim=1)
+        dec3_tx = self.decoder3_tx(dec3_tx)
+        dec2_tx = self.upconv2_tx(dec3_tx)
+        dec2_tx = torch.cat((dec2_tx, enc2), dim=1)
+        dec2_tx = self.decoder2_tx(dec2_tx)
+        dec1_tx = self.upconv1_tx(dec2_tx)
+        dec1_tx = torch.cat((dec1_tx, enc1), dim=1)
+        dec1_tx = self.decoder1_tx(dec1_tx)
+        tx_loc = self.conv_tx(dec1_tx)
+        return map, tx_loc
