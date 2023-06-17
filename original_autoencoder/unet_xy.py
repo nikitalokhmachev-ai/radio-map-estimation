@@ -272,7 +272,7 @@ class UNet_V3_XY_V1(UNetXY_V1):
         enc2 = self.encoder2(self.pool1(enc1))
         enc3 = self.encoder3(self.pool2(enc2))
 
-        bottleneck = self.bottleneck(self.pool(enc3))
+        bottleneck = self.bottleneck(self.pool3(enc3))
         tx_loc = nn.functional.silu(self.xy_linear_1(bottleneck.mean((2,3))))
         tx_loc = torch.sigmoid(self.xy_linear_2(tx_loc))
 
