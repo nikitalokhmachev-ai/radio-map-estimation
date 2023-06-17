@@ -474,3 +474,84 @@ class UNet_V3_Focal_V4(UNetFocal_V2):
         dec1_tx = self.decoder1_tx(dec1)
         tx_loc = self.conv_tx(dec1_tx)
         return map, tx_loc
+    
+
+class UNet_V3_Focal_V5(UNetFocal_V2):
+    '''Output two channels from Decoder, one for Radio Map and one for Transmitter Location'''
+
+    def __init__(self, in_channels=2, latent_channels=64, out_channels=2, features=[32,32,64]):
+        super(UNetFocal_V2, self).__init__()
+
+        if isinstance(features, int):
+            features = [features] * 3
+
+        # Use the same 3-layer blocks as UNet_V2
+        self.encoder1 = UNet_V2._block(in_channels, features[0], name="enc1")
+        self.pool1 = nn.AvgPool2d(kernel_size=2, stride=2)
+        self.encoder2 = UNet_V2._block(features[0], features[1], name="enc2")
+        self.pool2 = nn.AvgPool2d(kernel_size=2, stride=2)
+        self.encoder3 = UNet_V2._block(features[1], features[2], name="enc3")
+        self.pool3 = nn.AvgPool2d(kernel_size=2, stride=2)
+
+        self.bottleneck = UNet_V2._block(features[2], latent_channels, name='bottleneck')
+
+        self.upconv3 = nn.ConvTranspose2d(latent_channels, features[2], kernel_size=2, stride=2)
+        self.decoder3 = UNet_V2._block(features[2] * 2, features[2], name="dec3")
+        self.upconv2 = nn.ConvTranspose2d(features[2], features[1], kernel_size=2, stride=2)
+        self.decoder2 = UNet_V2._block(features[1] * 2, features[1], name="dec2")
+        self.upconv1 = nn.ConvTranspose2d(features[1], features[0], kernel_size=2, stride=2)
+        self.decoder1 = UNet_V2._block(features[0] * 2, features[0], name="dec1")
+
+        # Here is one extra 1x1 Convolution to change the output into the right shape
+        self.conv = nn.Conv2d(in_channels=features[0], out_channels=out_channels, kernel_size=1)
+
+        self.focal_loss = FocalLoss()
+
+    def forward(self, x):
+        enc1 = self.encoder1(x)
+        enc2 = self.encoder2(self.pool1(enc1))
+        enc3 = self.encoder3(self.pool2(enc2))
+
+        bottleneck = self.bottleneck(self.pool(enc3))
+
+        dec3 = self.upconv3(bottleneck)
+        dec3 = torch.cat((dec3, enc3), dim=1)
+        dec3 = self.decoder3(dec3)
+        dec2 = self.upconv2(dec3)
+        dec2 = torch.cat((dec2, enc2), dim=1)
+        dec2 = self.decoder2(dec2)
+        dec1 = self.upconv1(dec2)
+        dec1 = torch.cat((dec1, enc1), dim=1)
+        dec1 = self.decoder1(dec1)
+        output = torch.sigmoid(self.conv(dec1))
+        return output
+    
+    def step(self, batch, optimizer, w_rec, w_loc, train=True):
+        with torch.set_grad_enabled(train):
+            t_x_point, t_y_point, t_y_mask, _, _, tx_loc = batch
+            t_x_point, t_y_point = t_x_point.to(torch.float32).to(device), t_y_point.to(torch.float32).to(device)
+            t_y_mask, tx_loc = t_y_mask.to(torch.float32).to(device), tx_loc.to(torch.float32).to(device)
+
+            output = self.forward(t_x_point)
+            t_y_point_pred = output[:,0].unsqueeze(1).to(torch.float32)
+            tx_loc_pred = output[:,1].unsqueeze(1).to(torch.float32)
+
+            # Transform tx_loc into one-hot maps
+            batch_ = torch.arange(0,tx_loc_pred.shape[0]).to(torch.int)
+            channels_ = torch.zeros(tx_loc_pred.shape[0]).to(torch.int)
+            x_coord = torch.round(tx_loc[:,0] * tx_loc_pred.shape[-1]).detach().to(torch.int)
+            y_coord = torch.round(-tx_loc[:,1] * tx_loc_pred.shape[-2]).detach().to(torch.int) - 1 # -1 to account for the fact that counting from top starts at 0 but counting from bottom starts from -1 (instead of -0)
+            tx_loc_map = torch.zeros_like(tx_loc_pred).to(device)
+            tx_loc_map[batch_, channels_, y_coord, x_coord] = 1
+
+            rec_loss_ = nn.functional.mse_loss(t_y_point_pred * t_y_mask, t_y_point * t_y_mask).to(torch.float32)
+            loc_loss_ = self.focal_loss(tx_loc_pred, tx_loc_map).to(torch.float32)
+
+            loss_ = w_rec * rec_loss_ + w_loc * loc_loss_
+            
+            if train:
+                loss_.backward()
+                optimizer.step()
+                optimizer.zero_grad()
+
+        return loss_, rec_loss_, loc_loss_
