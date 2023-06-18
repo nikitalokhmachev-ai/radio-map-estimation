@@ -124,7 +124,8 @@ class UNet(nn.Module):
         return running_loss / (i+1)
     
 
-    def fit_wandb(self, train_dl, test_dl, optimizer, project_name, run_name, epochs=100, save_model_epochs=25, save_model_dir='/content'):
+    def fit_wandb(self, train_dl, test_dl, scaler, optimizer, scheduler, project_name, run_name, epochs=100, 
+                  save_model_epochs=25, save_model_dir='/content', use_true_evaluation=True, dB_max=-47.84, dB_min=-147):
         import wandb
         wandb.init(project=project_name, name=run_name)
         for epoch in range(epochs):
@@ -141,14 +142,23 @@ class UNet(nn.Module):
                 filepath = os.path.join(save_model_dir, f'epoch_{epoch}.pth')
                 self.save_model(filepath)
 
-            test_running_loss = 0.0
-            for i, batch in enumerate(test_dl):
-                loss = self.step(batch, optimizer, train=False)
-                test_running_loss += loss.detach().item()
-                test_loss = test_running_loss/(i+1)
-                print(f'{loss}, [{epoch + 1}, {i + 1:5d}] loss: {test_loss}')
-                
+
+            if use_true_evaluation:
+                test_loss = self.evaluate(test_dl, scaler, dB_max, dB_min, no_scale=False)
+                print(f'{test_loss}, [{epoch + 1}]')
+
+            else:
+                test_running_loss = 0.0
+                for i, batch in enumerate(test_dl):
+                    loss = self.step(batch, optimizer, train=False)
+                    test_running_loss += loss.detach().item()
+                    test_loss = test_running_loss/(i+1)
+                    print(f'{loss}, [{epoch + 1}, {i + 1:5d}] loss: {test_loss}')
+                                    
             wandb.log({'train_loss': train_loss, 'test_loss': test_loss})
+
+            if scheduler:
+                scheduler.step()
 
 
     def evaluate(self, test_dl, scaler, dB_max=-47.84, dB_min=-147, no_scale=False):

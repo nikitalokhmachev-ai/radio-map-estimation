@@ -105,7 +105,8 @@ class UNetXY_V1(nn.Module):
                 self.save_model(filepath)
     
 
-    def fit_wandb(self, train_dl, test_dl, optimizer, project_name, run_name, w_rec, w_loc, epochs=100, save_model_epochs=25, save_model_dir='/content'):
+    def fit_wandb(self, train_dl, test_dl, scaler, optimizer, scheduler, project_name, run_name, w_rec, w_loc, epochs=100, 
+                  save_model_epochs=25, save_model_dir='/content', use_true_evaluation=True, dB_max=-47.84, dB_min=-147):
         import wandb
         wandb.init(project=project_name, name=run_name)
         for epoch in range(epochs):
@@ -126,29 +127,40 @@ class UNetXY_V1(nn.Module):
                 filepath = os.path.join(save_model_dir, f'epoch_{epoch}.pth')
                 self.save_model(filepath)
 
-            test_running_loss, test_rec_running_loss, test_loc_running_loss = 0.0, 0.0, 0.0
-            for i, batch in enumerate(test_dl):
-                loss_, rec_loss_, loc_loss_ = self.step(batch, optimizer, w_rec=w_rec, w_loc=w_loc, train=False)
-                test_running_loss += loss_.detach().item()
-                test_rec_running_loss += rec_loss_.detach().item()
-                test_loc_running_loss += loc_loss_.detach().item()
-                test_loss = test_running_loss / (i+1)
-                test_rec_loss = test_rec_running_loss / (i+1)
-                test_loc_loss = test_loc_running_loss / (i+1)
-                print(f'{loss_}, [{epoch + 1}, {i + 1:5d}] loss: {test_loss}, reconstruction_loss: {test_rec_loss}, location_loss: {test_loc_loss}')
-                
-            wandb.log({'train_loss': train_rec_loss, 'train_location_loss': train_loc_loss, 'train_combined_loss': train_loss,
-                       'test_loss': test_rec_loss, 'test_location_loss': test_loc_loss, 'test_combined_loss': test_loss})
+            if use_true_evaluation:
+                test_loss, test_loc_loss = self.evaluate(test_dl, scaler, dB_max, dB_min, no_scale=False, track_location_loss=True)
+                print(f'{test_loss}, [{epoch + 1}]')
+                wandb.log({'train_loss': train_rec_loss, 'train_location_loss': train_loc_loss, 'train_combined_loss': train_loss,
+                        'test_loss': test_loss, 'test_location_loss': test_loc_loss})
+
+            else:
+                test_running_loss, test_rec_running_loss, test_loc_running_loss = 0.0, 0.0, 0.0
+                for i, batch in enumerate(test_dl):
+                    loss_, rec_loss_, loc_loss_ = self.step(batch, optimizer, w_rec=w_rec, w_loc=w_loc, train=False)
+                    test_running_loss += loss_.detach().item()
+                    test_rec_running_loss += rec_loss_.detach().item()
+                    test_loc_running_loss += loc_loss_.detach().item()
+                    test_loss = test_running_loss / (i+1)
+                    test_rec_loss = test_rec_running_loss / (i+1)
+                    test_loc_loss = test_loc_running_loss / (i+1)
+                    print(f'{loss_}, [{epoch + 1}, {i + 1:5d}] loss: {test_loss}, reconstruction_loss: {test_rec_loss}, location_loss: {test_loc_loss}')
+                    
+                wandb.log({'train_loss': train_rec_loss, 'train_location_loss': train_loc_loss, 'train_combined_loss': train_loss,
+                        'test_loss': test_rec_loss, 'test_location_loss': test_loc_loss, 'test_combined_loss': test_loss})
+            
+            if scheduler:
+                scheduler.step()
 
 
-    def evaluate(self, test_dl, scaler, dB_max=-47.84, dB_min=-147, no_scale=False):
+    def evaluate(self, test_dl, scaler, dB_max=-47.84, dB_min=-147, no_scale=False, track_location_loss=False):
         losses = []
         with torch.no_grad():
             for i, data in enumerate(test_dl):
-                    t_x_point, t_y_point, t_y_mask, t_channel_pow, file_path, j = data
+                    t_x_point, t_y_point, t_y_mask, t_channel_pow, file_path, tx_loc = data
                     t_x_point, t_y_point, t_y_mask = t_x_point.to(torch.float32).to(device), t_y_point.flatten(1).to(device), t_y_mask.flatten(1).to(device)
                     t_channel_pow = t_channel_pow.flatten(1).to(device).detach().cpu().numpy()
-                    t_y_point_pred, _ = self.forward(t_x_point)
+                    tx_loc = tx_loc.to(torch.float32).to(device)
+                    t_y_point_pred, tx_loc_pred = self.forward(t_x_point)
                     t_y_point_pred = t_y_point_pred.flatten(1).detach().cpu().numpy()
                     building_mask = (t_x_point[:,1,:,:].flatten(1) == -1).to(torch.float32).detach().cpu().numpy()
                     if scaler:
@@ -166,7 +178,12 @@ class UNetXY_V1(nn.Module):
                                 / np.sum(building_mask == 0, axis=1)).tolist()
                     losses += loss
                     print(f'{np.sqrt(np.mean(loss))}')
-                    
+
+            if track_location_loss==True:
+                tx_loc_pred = tx_loc_pred.to(torch.float32)
+                loc_loss_ = nn.functional.mse_loss(tx_loc_pred, tx_loc).to(torch.float32)
+                return torch.sqrt(torch.Tensor(losses).mean()), loc_loss_
+
             return torch.sqrt(torch.Tensor(losses).mean())
         
 
