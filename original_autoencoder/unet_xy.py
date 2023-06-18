@@ -109,6 +109,8 @@ class UNetXY_V1(nn.Module):
                   save_model_epochs=25, save_model_dir='/content', use_true_evaluation=True, dB_max=-47.84, dB_min=-147):
         import wandb
         wandb.init(project=project_name, name=run_name)
+        benchmark = dict()
+        count = 0
         for epoch in range(epochs):
             train_running_loss, train_rec_running_loss, train_loc_running_loss = 0.0, 0.0, 0.0
             for i, batch in enumerate(train_dl):
@@ -120,12 +122,7 @@ class UNetXY_V1(nn.Module):
                 train_rec_loss = train_rec_running_loss / (i+1)
                 train_loc_loss = train_loc_running_loss / (i+1)
                 print(f'{loss_}, [{epoch + 1}, {i + 1:5d}] loss: {train_loss}, reconstruction_loss: {train_rec_loss}, location_loss: {train_loc_loss}')
-                    
-            if (epoch + 1) % save_model_epochs == 0 or epoch == epochs - 1:
-                if not os.path.exists(save_model_dir):
-                    os.makedirs(save_model_dir)
-                filepath = os.path.join(save_model_dir, f'epoch_{epoch}.pth')
-                self.save_model(filepath)
+
 
             if use_true_evaluation:
                 test_loss, test_loc_loss = self.evaluate(test_dl, scaler, dB_max, dB_min, no_scale=False, track_location_loss=True)
@@ -147,6 +144,17 @@ class UNetXY_V1(nn.Module):
                     
                 wandb.log({'train_loss': train_rec_loss, 'train_location_loss': train_loc_loss, 'train_combined_loss': train_loss,
                         'test_loss': test_rec_loss, 'test_location_loss': test_loc_loss, 'test_combined_loss': test_loss})
+                
+            if (epoch + 1) % save_model_epochs == 0 or epoch == epochs - 1:
+                if not os.path.exists(save_model_dir):
+                    os.makedirs(save_model_dir)
+                filepath = os.path.join(save_model_dir, f'epoch_{epoch}.pth')
+                self.save_model(filepath)
+                benchmark[count] = test_loss
+                if count > 0:
+                    if test_loss > benchmark[count-1]:
+                        break
+                count += 1
             
             if scheduler:
                 scheduler.step()
