@@ -78,7 +78,7 @@ class Autoencoder(torch.nn.Module):
         wandb.init(project=project_name, name=run_name)
         for epoch in range(epochs):
             train_loss = self.fit(train_dl, optimizer, epochs=1, loss=loss)
-            test_loss = self.evaluate(test_dl, scaler, no_scale=True)
+            test_loss = self.evaluate(test_dl, scaler, no_scale=False)
             wandb.log({'train_loss': train_loss, 'test_loss': test_loss})
             if scheduler:
                 scheduler.step()
