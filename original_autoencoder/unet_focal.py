@@ -334,6 +334,59 @@ class UNetFocal_V3(UNetFocal_V2):
         return map, tx_loc
 
 
+class UNet_V3_Focal_V1(UNetFocal_V2):
+    '''Apply single convolution to output radio map, use as binary prediction of transmitter location'''
+    def __init__(self, in_channels=2, latent_channels=64, out_channels=1, features=[32,32,64]):
+        super(UNetFocal_V2, self).__init__()
+
+        if isinstance(features, int):
+            features = [features] * 3
+
+        # Use the same 3-layer blocks as UNet_V2
+        self.encoder1 = UNet_V2._block(in_channels, features[0], name="enc1")
+        self.pool1 = nn.AvgPool2d(kernel_size=2, stride=2)
+        self.encoder2 = UNet_V2._block(features[0], features[1], name="enc2")
+        self.pool2 = nn.AvgPool2d(kernel_size=2, stride=2)
+        self.encoder3 = UNet_V2._block(features[1], features[2], name="enc3")
+        self.pool3 = nn.AvgPool2d(kernel_size=2, stride=2)
+
+        self.bottleneck = UNet_V2._block(features[2], latent_channels, name='bottleneck')
+
+        self.upconv3 = nn.ConvTranspose2d(latent_channels, features[2], kernel_size=2, stride=2)
+        self.decoder3 = UNet_V2._block(features[2] * 2, features[2], name="dec3")
+        self.upconv2 = nn.ConvTranspose2d(features[2], features[1], kernel_size=2, stride=2)
+        self.decoder2 = UNet_V2._block(features[1] * 2, features[1], name="dec2")
+        self.upconv1 = nn.ConvTranspose2d(features[1], features[0], kernel_size=2, stride=2)
+        self.decoder1 = UNet_V2._block(features[0] * 2, features[0], name="dec1")
+
+        # Split off Map and TX_Loc heads at final convolution
+        self.conv_map = nn.Conv2d(in_channels=features[0], out_channels=out_channels, kernel_size=1)
+        self.conv_tx = nn.Conv2d(in_channels=out_channels, out_channels=out_channels, kernel_size=1)
+
+        # Focal Loss as a weighted form of BCE Loss
+        self.focal_loss = FocalLoss()
+
+    def forward(self, x):
+        enc1 = self.encoder1(x)
+        enc2 = self.encoder2(self.pool1(enc1))
+        enc3 = self.encoder3(self.pool2(enc2))
+
+        bottleneck = self.bottleneck(self.pool3(enc3))
+
+        dec3 = self.upconv3(bottleneck)
+        dec3 = torch.cat((dec3, enc3), dim=1)
+        dec3 = self.decoder3(dec3)
+        dec2 = self.upconv2(dec3)
+        dec2 = torch.cat((dec2, enc2), dim=1)
+        dec2 = self.decoder2(dec2)
+        dec1 = self.upconv1(dec2)
+        dec1 = torch.cat((dec1, enc1), dim=1)
+        dec1 = self.decoder1(dec1)
+        map = self.conv_map(dec1)
+        tx_loc = self.conv_tx(map)
+        return torch.sigmoid(map), tx_loc
+
+
 class UNet_V3_Focal_V2(UNetFocal_V2):
     '''UNetFocal_V2 reimplemented for UNet_V3 architecture
     Split Map Reconstruction and TX Localization at last convolution from Decoder'''
