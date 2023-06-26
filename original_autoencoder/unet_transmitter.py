@@ -194,11 +194,24 @@ class UNetTransmitter_V3(nn.Module):
         losses = []
         with torch.no_grad():
             for i, data in enumerate(test_dl):
-                    t_x_point, t_y_point, t_y_mask, t_channel_pow, file_path, j = data
+                    t_x_point, t_y_point, t_y_mask, t_channel_pow, file_path, tx_loc = data
                     t_x_point, t_y_point, t_y_mask = t_x_point.to(torch.float32).to(device), t_y_point.flatten(1).to(device), t_y_mask.flatten(1).to(device)
                     t_channel_pow = t_channel_pow.flatten(1).to(device).detach().cpu().numpy()
-                    t_y_point_pred = self.forward(t_x_point).flatten(1).detach().cpu().numpy()
+
+                    # Transform tx_loc into one-hot maps, concatenate to t_x_point
+                    batch_ = torch.arange(0,t_y_point.shape[0]).to(torch.int)
+                    channels_ = torch.zeros(t_y_point.shape[0]).to(torch.int)
+                    x_coord = torch.round(tx_loc[:,0] * t_y_point.shape[-1]).detach().to(torch.int)
+                    y_coord = torch.round(-tx_loc[:,1] * t_y_point.shape[-2]).detach().to(torch.int) - 1 # -1 to account for the fact that counting from top starts at 0 but counting from bottom starts from -1 (instead of -0)
+                    tx_loc_map = torch.zeros_like(t_y_point).to(device)
+                    tx_loc_map[batch_, channels_, y_coord, x_coord] = 1
+
+                    input = torch.cat((t_x_point, tx_loc_map), dim=1).to(torch.float32)
+
+                    t_y_point_pred = self.forward(input).flatten(1).detach().cpu().numpy()
                     building_mask = (t_x_point[:,1,:,:].flatten(1) == -1).to(torch.float32).detach().cpu().numpy()
+
+
                     if scaler:
                         loss = (np.linalg.norm(
                             (1 - building_mask) * (scaler.reverse_transform(t_channel_pow) - scaler.reverse_transform(t_y_point_pred)), axis=1) ** 2 
