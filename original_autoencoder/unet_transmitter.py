@@ -195,7 +195,9 @@ class UNetTransmitter_V3(nn.Module):
         with torch.no_grad():
             for i, data in enumerate(test_dl):
                     t_x_point, t_y_point, t_y_mask, t_channel_pow, file_path, tx_loc = data
-                    t_x_point, t_y_point, t_y_mask = t_x_point.to(torch.float32).to(device), t_y_point.flatten(1).to(device), t_y_mask.flatten(1).to(device)
+
+                    # I don't flatten t_y_point and cast it to torch.float32. This shouldn't affect evaluation because we don't use it except to shape tx_loc into a one-hot map
+                    t_x_point, t_y_point = t_x_point.to(torch.float32).to(device), t_y_point.to(torch.float32).to(device)
                     t_channel_pow = t_channel_pow.flatten(1).to(device).detach().cpu().numpy()
 
                     # Transform tx_loc into one-hot maps, concatenate to t_x_point
@@ -203,7 +205,7 @@ class UNetTransmitter_V3(nn.Module):
                     channels_ = torch.zeros(t_y_point.shape[0]).to(torch.int)
                     x_coord = torch.round(tx_loc[:,0] * t_y_point.shape[-1]).detach().to(torch.int)
                     y_coord = torch.round(-tx_loc[:,1] * t_y_point.shape[-2]).detach().to(torch.int) - 1 # -1 to account for the fact that counting from top starts at 0 but counting from bottom starts from -1 (instead of -0)
-                    tx_loc_map = torch.zeros_like(t_x_point[:,0:1]).to(device) #Can't use t_y_point for shape because it's flattened above
+                    tx_loc_map = torch.zeros_like(t_x_point[:,0:1]).to(device)
                     tx_loc_map[batch_, channels_, y_coord, x_coord] = 1
 
                     input = torch.cat((t_x_point, tx_loc_map), dim=1).to(torch.float32)
