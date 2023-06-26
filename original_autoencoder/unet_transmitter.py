@@ -7,31 +7,31 @@ import os
 
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
-class UNet_V3_Transmitter(nn.Module):
+class UNetTransmitter_V3(nn.Module):
 
     def __init__(self, in_channels=2, latent_channels=64, out_channels=1, features=[32,32,64]):
         # TODO: Figure out the best way to call super().__init__() here. 
-        super(UNet_V3_Transmitter, self).__init__()
+        super(UNetTransmitter_V3, self).__init__()
 
         if isinstance(features, int):
             features = [features] * 3
 
         # Use the same 3-layer blocks as UNet_V2
-        self.encoder1 = UNet_V3_Transmitter._block(in_channels, features[0], name="enc1")
+        self.encoder1 = UNetTransmitter_V3._block(in_channels, features[0], name="enc1")
         self.pool1 = nn.AvgPool2d(kernel_size=2, stride=2)
-        self.encoder2 = UNet_V3_Transmitter._block(features[0], features[1], name="enc2")
+        self.encoder2 = UNetTransmitter_V3._block(features[0], features[1], name="enc2")
         self.pool2 = nn.AvgPool2d(kernel_size=2, stride=2)
-        self.encoder3 = UNet_V3_Transmitter._block(features[1], features[2], name="enc3")
+        self.encoder3 = UNetTransmitter_V3._block(features[1], features[2], name="enc3")
         self.pool3 = nn.AvgPool2d(kernel_size=2, stride=2)
 
-        self.bottleneck = UNet_V3_Transmitter._block(features[2], latent_channels, name='bottleneck')
+        self.bottleneck = UNetTransmitter_V3._block(features[2], latent_channels, name='bottleneck')
 
         self.upconv3 = nn.ConvTranspose2d(latent_channels, features[2], kernel_size=2, stride=2)
-        self.decoder3 = UNet_V3_Transmitter._block(features[2] * 2, features[2], name="dec3")
+        self.decoder3 = UNetTransmitter_V3._block(features[2] * 2, features[2], name="dec3")
         self.upconv2 = nn.ConvTranspose2d(features[2], features[1], kernel_size=2, stride=2)
-        self.decoder2 = UNet_V3_Transmitter._block(features[1] * 2, features[1], name="dec2")
+        self.decoder2 = UNetTransmitter_V3._block(features[1] * 2, features[1], name="dec2")
         self.upconv1 = nn.ConvTranspose2d(features[1], features[0], kernel_size=2, stride=2)
-        self.decoder1 = UNet_V3_Transmitter._block(features[0] * 2, features[0], name="dec1")
+        self.decoder1 = UNetTransmitter_V3._block(features[0] * 2, features[0], name="dec1")
 
         # Here is one extra 1x1 Convolution to change the output into the right shape
         self.conv = nn.Conv2d(in_channels=features[0], out_channels=out_channels, kernel_size=1)
