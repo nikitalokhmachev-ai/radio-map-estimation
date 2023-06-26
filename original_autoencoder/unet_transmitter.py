@@ -203,7 +203,7 @@ class UNetTransmitter_V3(nn.Module):
                     channels_ = torch.zeros(t_y_point.shape[0]).to(torch.int)
                     x_coord = torch.round(tx_loc[:,0] * t_y_point.shape[-1]).detach().to(torch.int)
                     y_coord = torch.round(-tx_loc[:,1] * t_y_point.shape[-2]).detach().to(torch.int) - 1 # -1 to account for the fact that counting from top starts at 0 but counting from bottom starts from -1 (instead of -0)
-                    tx_loc_map = torch.zeros_like(t_y_point).to(device)
+                    tx_loc_map = torch.zeros_like(t_x_point[:,0:1]).to(device) #Can't use t_y_point for shape because it's flattened above
                     tx_loc_map[batch_, channels_, y_coord, x_coord] = 1
 
                     input = torch.cat((t_x_point, tx_loc_map), dim=1).to(torch.float32)
