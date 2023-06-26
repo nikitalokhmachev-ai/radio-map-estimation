@@ -327,21 +327,21 @@ class UNet_V3(UNet):
             features = [features] * 3
 
         # Use the same 3-layer blocks as UNet_V2
-        self.encoder1 = UNet_V2._block(in_channels, features[0], name="enc1")
+        self.encoder1 = UNet_V3._block(in_channels, features[0], name="enc1")
         self.pool1 = nn.AvgPool2d(kernel_size=2, stride=2)
-        self.encoder2 = UNet_V2._block(features[0], features[1], name="enc2")
+        self.encoder2 = UNet_V3._block(features[0], features[1], name="enc2")
         self.pool2 = nn.AvgPool2d(kernel_size=2, stride=2)
-        self.encoder3 = UNet_V2._block(features[1], features[2], name="enc3")
+        self.encoder3 = UNet_V3._block(features[1], features[2], name="enc3")
         self.pool3 = nn.AvgPool2d(kernel_size=2, stride=2)
 
-        self.bottleneck = UNet_V2._block(features[2], latent_channels, name='bottleneck')
+        self.bottleneck = UNet_V3._block(features[2], latent_channels, name='bottleneck')
 
         self.upconv3 = nn.ConvTranspose2d(latent_channels, features[2], kernel_size=2, stride=2)
-        self.decoder3 = UNet_V2._block(features[2] * 2, features[2], name="dec3")
+        self.decoder3 = UNet_V3._block(features[2] * 2, features[2], name="dec3")
         self.upconv2 = nn.ConvTranspose2d(features[2], features[1], kernel_size=2, stride=2)
-        self.decoder2 = UNet_V2._block(features[1] * 2, features[1], name="dec2")
+        self.decoder2 = UNet_V3._block(features[1] * 2, features[1], name="dec2")
         self.upconv1 = nn.ConvTranspose2d(features[1], features[0], kernel_size=2, stride=2)
-        self.decoder1 = UNet_V2._block(features[0] * 2, features[0], name="dec1")
+        self.decoder1 = UNet_V3._block(features[0] * 2, features[0], name="dec1")
 
         # Here is one extra 1x1 Convolution to change the output into the right shape
         self.conv = nn.Conv2d(in_channels=features[0], out_channels=out_channels, kernel_size=1)
